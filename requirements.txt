@@ -1,0 +1,14 @@
+celery
+django
+matplotlib
+pandas
+pytz
+xlsxwriter
+whitenoise
+django-extensions
+Werkzeug
+django_redis
+pyOpenSSL
+gunicorn
+crontab
+requests

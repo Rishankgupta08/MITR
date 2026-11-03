@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Details</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Google Sans', sans-serif;
+      background-color: #f9f9f9;
+      color: #333;
+      height: 100vh; /* Full height for the body */
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+      background-color: #333;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+    }
+
+
+    .header-right{
+      display: flex;
+      align-items: center;
+    }
+
+    .back-btn {
+      background-color: #f0f0f0; /* Example background color */
+      color: #333; /* Example text color */
+      border: 1px solid #ccc; /* Example border */
+      padding: 10px; /* Adjust padding to center the icon */
+      border-radius: 100px;
+      cursor: pointer;
+      margin-right: 20px;
+      transition: background-color 0.3s ease;
+      align-items: center; /* Center icon vertically */
+      justify-content: center; /* Center icon horizontally */
+      width: 38px;
+    }
+
+    .back-btn:hover {
+      background-color: #e0e0e0; /* Change background on hover */
+      color: #000; /* Change text color on hover */
+    }
+
+    .container {
+      height: 100%;
+      display: flex;
+      justify-content: space-between;
+      margin: 20px; /* Consistent margin around the container */
+      gap: 20px; /* Added gap for spacing between boxes */
+      flex: 1; /* Allow the container to grow and fill space */
+    }
+
+    .left-column {
+      display: flex;
+      flex-direction: column; /* Stack task and employee details vertically */
+      flex: 1; /* Allow the left column to grow */
+    }
+
+    .card {
+      height: auto;
+      background-color: #fff;
+      border-radius: 10px;
+      padding: 30px; /* Consistent padding for all cards */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px; /* Space between the two cards */
+      flex: 1; /* Allow cards to grow */
+    }
+
+    .wide-card {
+      flex: 2; /* Double the width of regular cards */
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-weight: 500;
+      color: #444;
+    }
+
+    .value {
+      margin: 0 0 20px; /* Space below each value */
+      text-align: left; /* Align values to the left */
+    }
+
+    .status-container {
+      margin-bottom: 20px;
+    }
+
+    .status-indicator {
+      display: flex;
+      justify-content: flex-start; /* Align to the left */
+      margin-top: 10px;
+    }
+
+    .status-label {
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      padding: 10px 15px; /* Adjust padding for button-like appearance */
+      margin-right: 10px; /* Space between labels */
+      cursor: default; /* Change cursor to indicate non-clickable */
+      pointer-events: none; /* Prevent clicks on labels */
+    }
+
+    .status-label.selected {
+      background-color: #444; /* Selected state color */
+      color: #fff; /* Text color for selected state */
+    }
+
+    .textarea {
+      width: 98%;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 1px;
+      resize: vertical;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .hidden {
+      display: none; /* Hide elements with this class */
+    }
+
+    .complete-task-btn {
+      background-color: rgb(6, 206, 6);
+      font-family: 'Google Sans', sans-serif;
+      font-size: 100%;
+      padding: 10px 15px;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: block;
+      margin-right: auto;
+      margin-left: 10px;
+    }
+    .mark-as-complete-btn {
+      background-color: green;
+      font-family: 'Google Sans', sans-serif;
+      font-size: 100%;
+      padding: 10px 15px;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: block;
+      margin-right: auto;
+      margin-top: 10px;
+    }
+    .complete-task-btn:hover {
+     background-color: #18b004; /* Darker red on hover */
+    }
+
+    .incomplete-task-btn {
+      background-color: rgb(210, 4, 4); /* Red color for delete button */
+      font-family: 'Google Sans', sans-serif;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 100%;
+      padding: 10px 15px;
+      cursor: pointer;
+      margin-right: auto; /* Push button to the far right */
+      margin-left: 10px;
+
+    }
+    .incomplete-task-btn:hover {
+     background-color: #a70404; /* Darker red on hover */
+    }
+
+    .rework-task-btn {
+      background-color: rgb(250, 165, 7); /* Red color for delete button */
+      font-family: 'Google Sans', sans-serif;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 100%;
+      padding: 10px 15px;
+      cursor: pointer;
+      margin-right: auto; /* Push button to the far right */
+      margin-left: 10px;
+
+    }
+    .rework-task-btn:hover {
+     background-color: #dd9506; /* Darker red on hover */
+    }
+
+    .delete-task-btn {
+      background-color: rgb(210, 4, 4); /* Red color for delete button */
+      font-family: 'Google Sans', sans-serif;
+      color: white;
+      border: none;
+      border-radius: 500px;
+      font-size: 100%;
+      padding: 10px 15px;
+      cursor: pointer;
+      margin-right: auto; /* Push button to the far right */
+      margin-left: 10px;
+    }
+    .delete-task-btn:hover {
+     background-color: #a70404; /* Darker red on hover */
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column; /* Stack on small screens */
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <a href="{% url 'dashboard' %}">
+      <button class="back-btn">
+        <i class="fas fa-arrow-left"></i>  <!-- Icon only -->
+      </button>
+      </a>
+      <h1 style="color: white;">Task Details</h1>
+    </div>
+    <div class="header-right">
+      {% if not task.completed and not is_employee and user.is_superuser and task.employee_marked_completed %}
+          <form method="POST" action="{% url 'task_view' task.id %}">
+              {% csrf_token %}
+              <button type="submit" name="rework_task" class="rework-task-btn">Rework Task</button>
+          </form>
+      {% endif %}
+      {% if not task.completed and not is_employee and user.is_superuser %}
+          <form method="POST" action="{% url 'task_view' task.id %}">
+          {% csrf_token %}
+          <button type="submit" name="complete_task" class="complete-task-btn">Complete Task</button>
+        </form>
+      {% endif %}
+      {% if task.completed and not is_employee and user.is_superuser%}
+          <form method="POST" action="{% url 'set_incomplete' task.id %}">
+              {% csrf_token %}
+              <button type="submit" class="incomplete-task-btn">Set as Incomplete</button>
+          </form>
+      {% endif %}
+      {% if not is_employee and user.is_superuser %}
+        <form method="post" action="{% url 'delete_task' task.id %}">
+          {% csrf_token %}
+          <button type="submit" class="delete-task-btn"><i class="fas fa-trash-alt"></i></button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="left-column">
+      <div class="card">
+        <h2>Task Title:</h2>
+        <p class="value">{{ task.title }}</p>
+        <h2>Description:</h2>
+        <p class="value">{{ task.description }}</p>
+        <h2>Reminder Period:</h2>
+        <p class="value" style="text-align: left;">{{ task.remind_every }}</p>
+      </div>
+
+      <div class="card">
+        <h2>Employee Name:</h2>
+        <p class="value">{{ task.employee.name }}</p>
+        <h2>Employee Email:</h2>
+        <p class="value">{{ task.employee.email }}</p>
+        <h2>Employee Contact:</h2>
+        <p class="value">{{ task.employee.phone_number }}</p>
+      </div>
+    </div>
+
+    <div class="card wide-card">
+      <h2>Date Assigned:</h2>
+        <p class="value">{{ task.date_added }}</p>
+      <h2>Deadline:</h2>
+        <p class="value" style="text-align: left;">{{ task.submission_date }}</p>
+      <div class="status-container">
+        <h2>Status:</h2>
+        <div class="message">
+          {% if task.employee_marked_completed %}
+              {{ task.employee.name }} has marked this task as completed at {{task.completed_date}}
+          {% else %}
+              {{ task.employee.name }} has not marked this task as completed.
+          {% endif %}
+          {% if task.employee_marked_completed and task.rework_by %}
+              <br>
+              {{ task.employee.name }} Has been asked to rework this task by {{ task.rework_by.username }} on {{ task.rework_date}}
+          {% endif %}
+          {% if task.completed %}
+              <br>
+              Co-ordinator {{ task.completed_by }} has verified the task to be completed at {{task.completed_at}}
+          {% endif %}
+        </div>
+        <div class="status-indicator">
+          {% if task.completed %}
+            <label style="background-color: green; color: white;" class="status-label">Completed</label>
+          {% elif task.submission_date > today %}
+            <label class="status-label">Pending</label>
+          {% else %}
+            <label class="status-label">Overdue</label>
+          {% endif %}
+        </div>
+        
+      </div>
+      <form method="POST" action="{% url 'task_view' task.id %}">
+        {% csrf_token %}
+        {% if is_employee %}
+            {% if task.submission_date <= today and not task.completed %}
+              <h2 id="overtimeLabel">Overdue Reason:</h2>
+              <div>
+                <textarea id="overdue_reason" name="overdue_reason" rows="4" cols="50" placeholder="Please provide a reason for the delay...">{{ task.overdue_reason }}</textarea>
+              </div>
+            {% endif %}
+            {% if not task.completed and not task.employee_marked_completed %}
+              <button type="submit" name="mark_as_completed" value="true" class="mark-as-complete-btn">Mark as Completed</button>
+            {% elif not task.completed and task.employee_marked_completed and task.rework_date is not None %}
+              Mark this task as completed only if the rework has been completed
+              <button type="submit" name="mark_as_completed" value="true" class="mark-as-complete-btn">Mark as Completed</button> 
+            {% endif %}
+        {% else %}
+
+        {% endif %}
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    function validateOverdueReason() {
+        var textarea = document.getElementById('id_overdue_reason');
+        if (textarea.value.trim() === '') {
+            alert('Please provide a reason for overdue before marking the task as completed.');
+            textarea.focus();
+            return false;
+        }
+        return true;
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      let selectedStatus = "Pending"; // Default selected status
+
+      function setStatus(status) {
+        selectedStatus = status; // Update selected status
+        updateStatusLabels(); // Update the visual state of the labels
+        toggleOvertimeReason(); // Toggle the overtime reason based on the selected status
+      }
+
+      function updateStatusLabels() {
+        const statusLabels = document.querySelectorAll('.status-label');
+
+        statusLabels.forEach(label => {
+          label.classList.remove('selected'); // Remove selected class from all labels
+        });
+
+        // Add selected class to the corresponding label based on the selected status
+        const selectedLabel = Array.from(statusLabels).find(label => label.textContent === selectedStatus);
+        if (selectedLabel) {
+          selectedLabel.classList.add('selected');
+        }
+      }
+
+    });
+  </script>
+</body>
+</html>

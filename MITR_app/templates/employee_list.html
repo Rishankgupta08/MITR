@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Google Sans', sans-serif;
+            background-color: #f9f9f9;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            width: 200px;
+            height: 100%;
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            box-sizing: border-box;
+            position: fixed;
+            left: 0;
+            top: 0;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 70px;
+            padding: 10px;
+            border: none;
+            background: none;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar-btn:hover {
+            background-color: #444;
+        }
+
+        .sidebar-btn i {
+            font-size: 20px;
+            width: 30px;
+        }
+
+        .sidebar.collapsed .sidebar-btn span {
+            display: none;
+        }
+
+        .main-content {
+            margin-left: 200px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 300px;
+            margin-right: 10px;
+        }
+
+        .employee-list {
+            list-style-type: none;
+            padding: 0;
+            width: 97%;
+            margin-left: 20px;
+        }
+
+        .employee-item {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: block;
+            color: #333;
+            position: relative;
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .employee-item:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .employee-name {
+            font-size: 18px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .employee-details {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .delete-icon-container {
+            background-color: #f44336;
+            border-radius: 5px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-right: 25px;
+        }
+
+        .delete-icon {
+            color: white;
+            font-size: 20px;
+        }
+
+        .delete-icon:hover {
+            color: #d32f2f;
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-right: 80px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .slider.round {
+            border-radius: 15px;
+        }
+
+        .slider.round:before {
+            border-radius: 45%;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: auto;
+        }
+
+        .btn-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .confirm-btn, .cancel-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+
+        .confirm-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .cancel-btn {
+            background-color: #ccc;
+            color: #000;
+        }
+        .employee-item {
+            position: relative; /* Make the item a positioned element */
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex; /* Use flexbox to align items */
+            justify-content: space-between; /* Space between content and delete icon */
+            align-items: center; /* Center vertically */
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            }
+
+        .user-info .current-user {
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .user-info .logout-btn {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin-left: 15px;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: background-color 0.3s ease;
+            }
+
+        .user-info .logout-btn:hover {
+            background-color: #444;
+        }
+        .version-text {
+            margin-top: auto;
+            text-align: center;
+            font-size: 14px;
+            color: #fff;
+        }
+    .search-bar {
+      width: 30%;
+      display: flex;
+      margin-bottom: 20px;
+    }
+
+    .search-bar form {
+      display: flex;
+      width: 100%;
+    }
+
+    .search-bar input {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-right: none;
+      border-radius: 20px 0 0 20px;
+      outline: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .search-bar button {
+      background-color: #333;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 0 20px 20px 0;
+      transition: background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-bar button:hover {
+      background-color: #444;
+    }
+
+    .search-bar button i {
+      margin: 0;
+      padding: 0;
+    }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <button class="sidebar-btn collapse-btn">
+            <i class="fas fa-angle-double-left"></i>
+            <span>Collapse</span>
+        </button>
+        <a href="{% url 'dashboard' %}" class="sidebar-link">
+            <button class="sidebar-btn">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+        </a>
+        {% if employee.coordinator or user.is_superuser %}
+        <a href="{% url 'summary_report' %}"class="sidebar-link">
+        <button class="sidebar-btn">
+          <i class="fas fa-chart-line"></i>
+          <span>Summary<br>Report</span>
+        </button>
+        </a>
+        {% endif%}
+        {% if employee.coordinator or user.is_superuser %}
+        <a href="{% url 'subscriptions' %}" class="sidebar-link">
+            <button class="sidebar-btn">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Subscriptions</span>
+            </button>
+        </a>
+        {% endif %}
+        <div class="version-text">MITR v2.0.1</div>
+    </div>
+
+    <div class="main-content">
+        <div class="dashboard-header">
+            <h1 style="font-size: 45px; margin-left: 20px;">Employee List</h1>
+            <div style="margin-right: 20px;" class="user-info">
+                <p> {% if employee.coordinator %}
+                        <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as a co-ordinator:</p> {{ user.username }} 
+                    {% elif is_employee %}
+                        <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an employee : </p> {{ user.username }}    
+                    {% elif is_superuser %}
+                        <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an Admin:</p> {{ user.username }}
+                    {% else %}
+                        <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You are unemployed</p> {{user.username}}
+                    {% endif %}
+                </p>
+                <div class="logout-option">
+                <form method="POST" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                </form>
+                </div>
+            </div>
+        </div>
+        <div style="margin-left: 20px;" class="search-bar">
+            <form method="GET" action="{% url 'dashboard' %}">
+              {% csrf_token %}
+              <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
+              <button type="submit">
+                <i class="fas fa-search"></i> 
+              </button>
+            </form>
+        </div>
+        <ul class="employee-list">
+            {% for employee in employees %}
+            <li class="employee-item">
+                <a style="text-decoration: none;" href="{% url 'employee_progress' employee.id %}">
+                    <div style="padding-bottom: 5px;" class="employee-name">{{ employee.name }}</div>
+                    <div class="employee-details">
+                        <i style="padding-bottom: 10px;" class="fas fa-envelope"></i> {{ employee.email }}<br>
+                        <i class="fas fa-phone"></i> {{ employee.phone_number }}
+                    </div>
+                </a>
+
+                <!-- Coordinator Switch -->
+                {% if user.is_superuser%}
+                <div class="switch-container">
+                    <label for="coordinator-switch-{{ employee.id }}">Coordinator</label>
+                    <label class="switch">
+                        <input type="checkbox" id="coordinator-switch-{{ employee.id }}" {% if employee.coordinator %}checked{% endif %}>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <!-- Delete button -->
+                <div class="delete-icon-container" data-id="{{ employee.id }}" data-name="{{ employee.name }}" onclick="openModal(this)">
+                    <i class="fas fa-trash-alt delete-icon"></i>
+                </div>
+                {% endif %}
+
+            </li>
+            {% empty %}
+            <li class="employee-item">No employees found.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div id="confirmModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Confirm Removal</h2>    
+            <p id="modal-text">Are you sure you want to remove this employee?</p>
+            <div class="btn-container">
+                <form method="POST" id="modal-form">
+                    {% csrf_token %}
+                    <button type="submit" class="confirm-btn">Confirm</button>
+                </form>
+                <button onclick="closeModal()" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Add the sidebar collapse functionality
+        document.querySelector('.collapse-btn').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.querySelector('.main-content').classList.toggle('expanded');
+        });
+
+        // Add employee search functionality
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const searchText = this.value.toLowerCase();
+                const employees = document.querySelectorAll('.employee-item');
+                
+                employees.forEach(employee => {
+                    const name = employee.querySelector('.employee-name')?.textContent.toLowerCase() || '';
+                    const email = employee.querySelector('.employee-details')?.textContent.toLowerCase() || '';
+                    if (name.includes(searchText) || email.includes(searchText)) {
+                        employee.style.display = '';
+                    } else {
+                        employee.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Modal functionality
+        function openModal(button) {
+            const employeeId = button.getAttribute("data-id");
+            const employeeName = button.getAttribute("data-name");
+            const modalText = document.getElementById("modal-text");
+            const modalForm = document.getElementById("modal-form");
+            const modal = document.getElementById("confirmModal");
+
+            if (modalText && modalForm && modal) {
+                modalText.innerText = `Are you sure you want to remove ${employeeName}?`;
+                modalForm.action = `/confirm-remove-employee/${employeeId}/`;
+                modal.style.display = "flex";
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById("confirmModal");
+            if (modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // Coordinator toggle functionality
+        document.querySelectorAll('.switch input[type="checkbox"]').forEach((switchElement) => {
+            switchElement.addEventListener('change', function() {
+                const employeeId = this.id.replace('coordinator-switch-', '');
+                const isCoordinator = this.checked;
+                
+                console.log('Toggle clicked for employee:', employeeId);
+                console.log('New coordinator status:', isCoordinator);
+
+                // Create FormData object
+                const formData = new FormData();
+                formData.append('coordinator', isCoordinator);
+
+                // Send an AJAX request to update the coordinator status
+                fetch(`/update-coordinator/${employeeId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        console.log(`Employee ${employeeId} coordinator status updated to: ${data.coordinator}`);
+                    } else {
+                        console.error('Error updating coordinator status:', data.error);
+                        this.checked = !isCoordinator;
+                    }
+                })
+                .catch(error => {
+                    console.error('Request failed:', error);
+                    this.checked = !isCoordinator;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary Report</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Google Sans', sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            width: 200px;
+            height: 100%;
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            box-sizing: border-box;
+            position: fixed;
+            left: 0;
+            top: 0;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 70px;
+            padding: 10px;
+            border: none;
+            background: none;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .sidebar-btn:hover {
+            background-color: #444;
+        }
+
+        .sidebar-btn i {
+            font-size: 20px;
+            width: 30px;
+        }
+
+        .sidebar.collapsed .sidebar-btn span {
+            display: none;
+        }
+
+        .main-content {
+            margin-left: 200px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 80px;
+        }
+
+        .container {
+            max-width: 1265px;
+            margin: 0 auto;
+            padding-right: 15px;
+        }
+
+        table {
+            width: 101%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        th {
+            background-color: #333;
+            color: #e5e7eb;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.5rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #4b5563;
+        }
+
+        td {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            color: #374151;
+            background-color: white;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        tr:hover td {
+            background-color: #f9fafb;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            text-transform: capitalize;
+        }
+
+        .status-completed {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-overdue {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-completed-overdue {
+            background-color: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .card {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .wide-card {
+            flex-basis: 100%;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 45px;
+            text-align: left;
+        }
+
+        h2 {
+            color: #333;
+            margin-top: 0;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        select, input[type="date"] {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            outline: none;
+            color: #fff;
+            background-color: #333;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 2px #3c3c3c83;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #555;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #333;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .back-btn {
+            background-color: #f0f0f0; /* Example background color */
+            color: #333; /* Example text color */
+            border: 1px solid #ccc; /* Example border */
+            padding: 10px; /* Adjust padding to center the icon */
+            border-radius: 100px;
+            cursor: pointer;
+            margin-right: 20px;
+            transition: background-color 0.3s ease;
+            align-items: center; /* Center icon vertically */
+            justify-content: center; /* Center icon horizontally */
+            width: 38px;
+        }
+
+        .back-btn:hover {
+            background-color: #e0e0e0; /* Change background on hover */
+            color: #000; /* Change text color on hover */
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .logout-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 20px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            }
+
+        .user-info .current-user {
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .user-info .logout-btn {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin-left: 15px;
+            cursor: pointer;
+            border-radius: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        .user-info .logout-btn:hover {
+            background-color: #444;
+        }
+        .version-text {
+            margin-top: auto;
+            text-align: center;
+            font-size: 14px;
+            color: #fff;
+        }
+        .sidebar-link {
+            text-decoration: none;  
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <button class="sidebar-btn collapse-btn">
+            <i class="fas fa-angle-double-left"></i>
+            <span>Collapse</span>
+        </button>
+        <a href="{% url 'dashboard' %}" class="sidebar-link">
+            <button class="sidebar-btn">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+        </a>
+        {% if employee.coordinator or user.is_superuser %}
+        <a href="{% url 'employee_list' %}" class="sidebar-link">
+        <button class="sidebar-btn">
+            <i class="fas fa-users"></i>
+            <span><p style="margin-left: 25px;">Employee</p> <p>Management</p></span>
+        </button>
+        </a>
+        {% endif %}
+        {% if employee.coordinator or user.is_superuser %}
+        <a href="{% url 'subscriptions' %}" class="sidebar-link">
+            <button class="sidebar-btn">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Subscriptions</span>
+            </button>
+        </a>
+        {% endif %}
+        <div class="version-text">MITR v2.0.1</div>
+    </div>
+
+    <div class="main-content">
+        <div class="dashboard-header">
+            <h1 style="margin-left: 20px;">Summary Report</h1>
+            <div style="margin-top: -8px; margin-right: 20px;" class="user-info">
+                {% if employee.coordinator %}
+                    <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as a co-ordinator:</p> {{ user.username }} 
+                {% elif is_employee %}
+                    <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an employee : </p> {{ user.username }}    
+                {% elif is_superuser %}
+                    <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an Admin:</p> {{ user.username }}
+                {% endif %}
+                <div style="margin-top: 20px;" class="logout-option">
+                    <form method="POST" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="card">
+                <div>
+                    <h2 style="font-size: 20px;"><strong>Report Options</strong></h2>
+                    <br>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <!-- First Form -->
+                        <form method="get" onsubmit="return validateDateField()" style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                            <label required for="date">Select Date:</label>
+                            <input type="date" id="date" name="date" value="{{ selected_date|date:'y-m-d' }}" required>
+                            <select id="report_type" name="report_type">
+                                <option value="daily" {% if report_type == 'daily' %}selected{% endif %}>Daily</option>
+                                <option value="weekly" {% if report_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                                <option value="monthly" {% if report_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                            </select>
+                            <select id="status_filter" name="status_filter">
+                                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+                                <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Overdue</option>
+                                <option value="completed_overdue" {% if status_filter == 'completed_overdue' %}selected{% endif %}>Completed Overdue</option>
+                            </select>
+                            <button type="submit" class="btn" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                Get Report
+                            </button>
+                        </form>
+                        <!-- Second Form -->
+                        <form method="post" action="{% url 'download_summary_report' selected_date report_type status_filter %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="padding: 10px 20px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                Download Report as Excel
+                            </button>
+                        </form>
+                    </div>
+                </div>                
+            </div>
+            <br>
+            <div class="card wide-card">
+                <h2 style="font-size: 20px;"><strong>Tasks Report for {{ selected_date }}</strong></h2>
+                <br>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Task ID</th>
+                            <th>Task Title</th>
+                            <th>Description</th>
+                            <th>Client Company</th>
+                            <th>Client Phone Number</th>
+                            <th>Email</th>
+                            <th>Date Added</th>
+                            <th>Submission Date</th>
+                            <th>Completed Date</th>
+                            <th>Status</th>
+                            <th>Employee</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in all_tasks %}
+                        <tr>
+                            <td>{{ task.task_id }}</td>
+                            <td>{{ task.title|slice:":8" }}...</td>
+                            <td>{{ task.description|slice:":10" }}...</td>
+                            <td>{{ task.client_company|slice:":8" }}...</td>
+                            <td>{{ task.client_phone_number }}</td>
+                            <td>{{ task.email|slice:":8" }}...</td>
+                            <td>{{ task.date_added }}</td>
+                            <td>{{ task.submission_date }}</td>
+                            <td>{{ task.completed_date }}</td>
+                            <td>
+                                {% if task.completed %}
+                                    {% if task.completed_date > task.submission_date %}
+                                        <span class="status-badge status-completed-overdue">Completed Overdue</span>
+                                    {% else %}
+                                        <span class="status-badge status-completed">Completed</span>
+                                    {% endif %}
+                                {% elif task.submission_date < selected_date %}
+                                    <span class="status-badge status-overdue">Overdue</span>
+                                {% else %}
+                                    <span class="status-badge status-pending">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ task.employee.name }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add the sidebar collapse functionality
+        document.querySelector('.collapse-btn').addEventListener('click', function() {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.querySelector('.main-content').classList.toggle('expanded');
+        });
+
+        function logout() {
+            window.location.href = "{% url 'logout' %}";
+        }
+
+        function validateDateField() {
+            const dateField = document.getElementById('date').value;
+            
+            if (dateField === '' || dateField === 'y-m-d') {
+                alert('Please fill in the date field.');
+                return false; // Prevent form submission
+            }
+            return true; // Allow form submission
+        }
+    </script>
+</body>
+</html>

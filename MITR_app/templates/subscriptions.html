@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscriptions - Task Management System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      width: 200px;
+      height: 100%;
+      background-color: #333;
+      color: #fff;
+      padding: 20px;
+      box-sizing: border-box;
+      position: fixed;
+      left: 0;
+      top: 0;
+      transition: width 0.3s ease;
+    }
+
+    .sidebar-link {
+      text-decoration: none;  
+    }
+
+    .sidebar.collapsed {
+      width: 80px;
+    }
+
+    .sidebar-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      height: 70px;
+      padding: 10px;
+      border: none;
+      background: none;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .sidebar-btn:hover {
+      background-color: #444;
+    }
+
+    .sidebar-btn i {
+      font-size: 20px;
+      width: 30px;
+    }
+
+    .sidebar.collapsed .sidebar-btn span {
+      display: none;
+    }
+
+    .main-content {
+      margin-left: 200px;
+      padding: 20px;
+      transition: margin-left 0.3s ease;
+    }
+
+    .main-content.expanded {
+      margin-left: 80px;
+    }
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+    }
+
+    .user-info .current-user {
+      margin-right: 15px;
+      font-size: 18px;
+    }
+
+    .user-info .logout-btn {
+      background-color: #333;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      margin-left: 15px;
+      cursor: pointer;
+      border-radius: 20px;
+      transition: background-color 0.3s ease;
+    }
+
+    .user-info .logout-btn:hover {
+      background-color: #444;
+    }
+
+    .version-text {
+      margin-top: auto;
+      text-align: center;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    .popup {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+
+    .popup-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .container {
+      max-width: 1265px;
+      margin: 0 auto;
+      padding-right: 15px;
+    }
+
+    .flex {
+      display: flex;
+    }
+
+    .justify-between {
+      justify-content: space-between;
+    }
+
+    .items-center {
+      align-items: center;
+    }
+
+    .mb-8 {
+      margin-bottom: 32px;
+    }
+
+    .bg-gray-800 {
+      background-color: #333;
+    }
+
+    .text-white {
+      color: #fff;
+    }
+
+    .px-6 {
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    .py-2 {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    .rounded-lg {
+      border-radius: 10px;
+    }
+
+    .hover:bg-gray-700 {
+      transition: background-color 0.3s ease;
+    }
+
+    .hover:bg-gray-700:hover {
+      background-color: #444;
+    }
+
+    .transition-colors {
+      transition: color 0.3s ease;
+    }
+
+    .duration-200 {
+      transition-duration: 200ms;
+    }
+
+    .focus:outline-none {
+      outline: none;
+    }
+
+    .focus:ring-2 {
+      box-shadow: 0 0 0 2px #fff;
+    }
+
+    .focus:ring-gray-500 {
+      box-shadow: 0 0 0 2px #777;
+    }
+
+    .focus:ring-offset-2 {
+      box-shadow: 0 0 0 2px #fff, 0 0 0 4px #777;
+    }
+    .search-bar {
+      width: 30.5%;
+      display: flex;
+      margin-bottom: 20px;
+      margin-left: 20px
+    }
+
+    .search-bar form {
+      display: flex;
+      width: 100%;
+    }
+
+    .search-bar input {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-right: none;
+      border-radius: 20px 0 0 20px;
+      outline: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .search-bar button {
+      background-color: #333;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-radius: 0 20px 20px 0;
+      transition: background-color 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-bar button:hover {
+      background-color: #444;
+    }
+
+    .search-bar button i {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <button class="sidebar-btn collapse-btn">
+      <i class="fas fa-angle-double-left"></i>
+      <span>Collapse</span>
+    </button>
+    <a href="{% url 'dashboard' %}" class="sidebar-link">
+      <button class="sidebar-btn">
+        <i class="fas fa-home"></i>
+        <span>Home</span>
+      </button>
+    </a>
+    {% if employee.coordinator or user.is_superuser %}
+    <a href="{% url 'employee_list' %}" class="sidebar-link">
+      <button class="sidebar-btn">
+        <i class="fas fa-users"></i>
+        <span><p style="margin-left: 25px;">Employee</p> <p>Management</p></span>
+      </button>
+    </a>
+    {% endif %}
+    {% if employee.coordinator or user.is_superuser %}
+    <a href="{% url 'summary_report' %}" class="sidebar-link">
+      <button class="sidebar-btn">
+        <i class="fas fa-chart-line"></i>
+        <span>Summary<br>Report</span>
+      </button>
+    </a>
+    {% endif %}
+    <div class="version-text">MITR v2.0.1</div>
+  </div>
+
+  <div class="main-content">
+    <div class="dashboard-header">
+      <h1 style="font-size: 45px; margin-left: 20px;">Subscriptions</h1>
+      <div style="margin-right: 4px;" class="user-info">
+        {% if employee.coordinator %}
+          <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as a co-ordinator:</p> {{ user.username }} 
+        {% elif is_employee %}
+          <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an employee : </p> {{ user.username }}    
+        {% elif is_superuser %}
+          <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an Admin:</p> {{ user.username }}
+        {% endif %}
+        <div class="logout-option">
+          <form method="POST" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="search-bar">
+      <form method="GET" action="{% url 'dashboard' %}">
+        {% csrf_token %}
+        <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
+        <button type="submit">
+          <i class="fas fa-search"></i> 
+        </button>
+      </form>
+    </div>
+
+    <div style="margin-left: 20px;" class="container mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            {% if user.is_superuser or employee.coordinator %}
+            <button onclick="openAddSubscriptionPopup()" class="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                Add Subscription
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="bg-gray-800">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">Customer</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">Subscription</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">Description</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">Start Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">End Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">Ending Reminder</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for subscription in subscriptions %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ subscription.customer_name }}</div>
+                            <div class="text-sm text-gray-500">{{ subscription.customer_email }}</div>
+                            <div class="text-sm text-gray-500">{{ subscription.customer_phone }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">{{ subscription.subscription_type }}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-sm text-gray-900">{{ subscription.description }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">{{ subscription.start_date|date:"Y-m-d" }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">{{ subscription.end_date|date:"Y-m-d" }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">{{ subscription.ending_reminder }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if subscription.status == 'Active' %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Expired
+                            </span>
+                            {% endif %}
+                            <div class="text-xs text-gray-500 mt-1">
+                                End date: {{ subscription.end_date|date:"F j, Y" }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination flex justify-center mt-4 space-x-2">
+                    {% if subscriptions.has_previous %}
+                        <a href="?page=1" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">&laquo; First</a>
+                        <a href="?page={{ subscriptions.previous_page_number }}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Previous</a>
+                    {% endif %}
+        
+                    <span class="px-3 py-2 bg-gray-800 text-white rounded-lg">
+                        Page {{ subscriptions.number }} of {{ subscriptions.paginator.num_pages }}
+                    </span>
+        
+                    {% if subscriptions.has_next %}
+                        <a href="?page={{ subscriptions.next_page_number }}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Next</a>
+                        <a href="?page={{ subscriptions.paginator.num_pages }}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Last &raquo;</a>
+                    {% endif %}
+        </div>
+    </div>
+  </div>
+
+  <!-- Add Subscription Popup -->
+  <div id="addSubscriptionPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center" style="backdrop-filter: blur(5px); /* Add blur effect */">
+      <div class="bg-white rounded-lg p-8 max-w-md w-full">
+          <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-bold">Add Subscription</h2>
+              <button onclick="closeAddSubscriptionPopup()" class="text-gray-500 hover:text-gray-700">
+                  <i class="fas fa-times"></i>
+              </button>
+          </div>
+          
+          <form id="subscriptionForm" method="POST" action="{% url 'add_subscription' %}">
+              {% csrf_token %}
+              <div class="space-y-4">
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Subscription Type:</label>
+                      <input type="text" name="subscription_type" class="pl-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500" placeholder="Enter subscription type">
+                  </div>
+                  
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Description:</label>
+                      <textarea name="description" rows="3" class="pl-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500"></textarea>
+                  </div>
+                  
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Ending Reminder:</label>
+                      <select name="ending_reminder" class="pl-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500">
+                          {% for value, label in reminder_choices %}
+                          <option value="{{ value }}">{{ label }}</option>
+                          {% endfor %}
+                      </select>
+                  </div>
+                  
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">End Date:</label>
+                      <input type="date" name="end_date" required class="pl-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500">
+                  </div>
+                  
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Customer Name:</label>
+                      <input type="text" name="customer_name" required class="pl-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500">
+                  </div>
+                  
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Customer Email:</label>
+                      <input type="email" name="customer_email" required class="pl-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500">
+                  </div>
+                  
+                  <div>
+                      <label class="block text-sm font-medium text-gray-700">Customer Phone:</label>
+                      <input type="tel" name="customer_phone" required class="pl-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500">
+                  </div>
+              </div>
+              
+              <div class="mt-6">
+                  <button type="submit" class="w-full bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                      Add Subscription
+                  </button>
+              </div>
+          </form>
+      </div>
+  </div>
+
+  <script>
+    // Sidebar collapse functionality
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const collapseBtn = document.querySelector('.collapse-btn');
+    const collapseBtnIcon = collapseBtn.querySelector('i');
+
+    collapseBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      mainContent.classList.toggle('expanded');
+      collapseBtnIcon.classList.toggle('fa-angle-double-left');
+      collapseBtnIcon.classList.toggle('fa-angle-double-right');
+    });
+
+    function openAddSubscriptionPopup() {
+        document.getElementById('addSubscriptionPopup').classList.remove('hidden');
+        document.getElementById('addSubscriptionPopup').classList.add('flex');
+    }
+
+    function closeAddSubscriptionPopup() {
+        document.getElementById('addSubscriptionPopup').classList.add('hidden');
+        document.getElementById('addSubscriptionPopup').classList.remove('flex');
+        document.getElementById('subscriptionForm').reset();
+    }
+
+    function logout() {
+      window.location.href = "{% url 'logout' %}";
+    }
+
+    function openAddEmployeePopup() {
+      window.location.href = "{% url 'add_employee' %}";
+    }
+  </script>
+</body>
+</html>

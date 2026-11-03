@@ -1,0 +1,241 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Task Management System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Google Sans', sans-serif; /* Apply Google Sans to the body */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-image: url('{% static "cloudy_mountains.jpg" %}'); /* Replace with your live wallpaper URL */
+      background-size: cover;
+      background-position: center;
+    }
+
+    .login-container {
+      display: flex;
+      background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent background for contrast */
+      backdrop-filter: blur(5px); /* Apply blur effect */
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      width: 600px; /* Fixed width */
+      height: 400px; /* Fixed height */
+      overflow: hidden; /* Ensure no overflow */
+      position: relative; /* For positioning the sliding panel */
+    }
+
+    .company-icon {
+      background-color: #444; /* Background for the icon area */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 150px; /* Fixed width */
+      border-radius: 10px 0 0 10px; /* Curved edges */
+    }
+
+    .company-icon img {
+      width: 80%; /* Adjust size of the icon */
+      height: auto; /* Maintain aspect ratio */
+      border-radius: 10px; /* Curve the icon edges */
+    }
+
+    .login-tabs {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 20px;
+      flex-grow: 1; /* Take the remaining space */
+      color: white; /* Text color for better visibility */
+    }
+
+    .login-tabs h2 {
+      margin-bottom: 20px;
+      font-size: 24px; /* Increased font size for better visibility */
+      color: white; /* Ensure label color is set to white */
+    }
+
+    .tab-button {
+      font-family: 'Google Sans', sans-serif;
+      width: 100%; /* Full width */
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #333;
+      border-radius: 20px; /* Curved edges */
+      outline: none; /* Remove outline */
+      font-size: 16px; /* Font size */
+      cursor: pointer;
+      background-color: #333;
+      color: white; /* Text color */
+      transition: background-color 0.3s ease;
+      text-align: center; /* Center text */
+    }
+
+    .tab-button:hover {
+      background-color: #444; /* Darker on hover */
+    }
+
+    .error-message {
+      color: red;
+      margin-top: 10px;
+      text-align: center; /* Center error message */
+    }
+
+    .login-form, .register-form {
+      font-family: 'Google Sans', sans-serif;
+      position: absolute;
+      top: 0;
+      right: -100%; /* Start off-screen */
+      width: calc(100% - 150px); /* Full width minus the company icon */
+      height: 100%; /* Full height */
+      background-color: transparent; /* Set to transparent */
+      padding: 20px;
+      box-sizing: border-box;
+      transition: right 0.3s ease; /* Transition for sliding effect */
+      border-radius: 0 10px 10px 0; /* Curve the right edges */
+      z-index: 10; /* Ensure it's above other content */
+    }
+
+    .login-form.active, .register-form.active {
+      right: 0; /* Slide in */
+    }
+
+    .login-input, .register-input {
+      font-family: 'Google Sans', sans-serif;
+      width: 100%; /* Full width */
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 20px; /* Curved edges */
+      outline: none; /* Remove outline */
+      font-size: 16px; /* Increased font size for better visibility */
+      box-sizing: border-box; /* Include padding and border in width */
+    }
+
+    .login-button, .register-button {
+      font-family: 'Google Sans', sans-serif;
+      width: 100%; /* Full width */
+      padding: 10px;
+      border: none;
+      border-radius: 20px; /* Curved edges */
+      background-color: #333; /* Set background color to black */
+      color: white; /* Set text color to white */
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .login-button:hover, .register-button:hover {
+      background-color: #444; /* Darker on hover */
+    }
+
+    .back-button {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 20px; /* Icon size */
+      cursor: pointer;
+      margin-right: 20px; /* Space between button and label */
+    }
+
+    .header-container {
+      display: flex;
+      align-items: center; /* Center vertically */
+      margin-bottom: 0px; /* Space below the header */
+      margin-top: -18px;
+      color: white;
+    }
+    .messages {
+      list-style-type: none;
+      padding: 0;
+      margin-bottom: 10px;
+    }
+
+    .messages li {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="company-icon">
+      <img src='{% static "mitr_logo.jpg" %}' alt="Company Logo"> <!-- Replace with your company logo URL -->
+    </div>
+    <div class="login-tabs">
+      <h2>Welcome</h2>
+      <button class="tab-button" onclick="showLogin()">Login</button>
+      <button class="tab-button" onclick="showRegister()">Register</button>
+      <div class="error-message" id="error-message"></div>
+    </div>
+
+    <form method="POST" class="login-form" id="login-form">
+      {% csrf_token %}
+      <div class="header-container">
+        <button type="button" class="back-button" onclick="hideLogin()">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>Login</h2>
+      </div>
+
+      {% for message in messages %}
+      <p class="error-message">{{ message }}</p>
+      {% endfor %}
+
+      <input type="email" name="email" class="login-input" placeholder="Email">
+      <input type="password" name="password" class="login-input" placeholder="Password">
+      <button type="submit" class="login-button" name="login">Login</button>
+    </form>
+
+    <form method="POST" class="register-form" id="register-form">
+      {% csrf_token %}
+      <div class="header-container">
+        <button type="button" class="back-button" onclick="hideRegister()">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2>Register</h2>
+      </div>
+
+      {% for message in messages %}
+      <p class="error-message">{{ message }}</p>
+      {% endfor %}
+
+      <input type="text" name="username" class="register-input" placeholder="Username">
+      <input type="email" name="email" class="register-input" placeholder="Email">
+      <input type="password" name="password1" class="register-input" placeholder="Password">
+      <input type="password" name="password2" class="register-input" placeholder="Confirm Password">
+      <input type="text" name="company" class="register-input" placeholder="Company">
+      <button type="submit" class="register-button" name="register">Register</button>
+    </form>
+  </div>
+
+  <script>
+    function showLogin() {
+      document.getElementById('login-form').classList.add('active');
+      document.querySelector('.login-tabs').style.display = 'none';
+    }
+
+    function hideLogin() {
+      document.getElementById('login-form').classList.remove('active');
+      document.querySelector('.login-tabs').style.display = 'flex';
+    }
+
+    function showRegister() {
+      document.getElementById('register-form').classList.add('active');
+      document.querySelector('.login-tabs').style.display = 'none';
+    }
+
+    function hideRegister() {
+      document.getElementById('register-form').classList.remove('active');
+      document.querySelector('.login-tabs').style.display = 'flex';
+    }
+  </script>
+</body>
+</html>
