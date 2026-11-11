@@ -298,7 +298,11 @@
                 <div class="card">
                     <h2>Progress Graph</h2>
                     <div class="progress-graph">
-                        <img src="{{ progress_graph_url }}" alt="Employee Task Progress">
+                        {% if chart_generated %}
+                            <img src="{{ progress_graph_url }}" alt="Employee Task Progress">
+                        {% else %}
+                            <p>Chart temporarily unavailable.</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -332,7 +336,7 @@
                             <td>{{ task.submission_date }}</td>
                             <td>
                                 {% if task.completed %}
-                                    {% if task.completed_date > task.submission_date %}
+                                    {% if task.completed_date and task.completed_date.date > task.submission_date %}
                                         <span class="status-badge status-completed_overdue">
                                             <i class="fas fa-check icon-white-tick"></i>
                                             Completed Overdue

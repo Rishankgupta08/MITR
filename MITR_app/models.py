@@ -4,6 +4,7 @@ from django.conf import settings
 from datetime import timedelta, datetime
 from django.core.mail import send_mail
 from django.utils import timezone
+from django_q.tasks import async_task
 from .tasks import send_reminder_email
 import logging
 import subprocess
@@ -66,7 +67,7 @@ class Task(models.Model):
     employee_marked_completed = models.BooleanField(default=False)
     next_reminder_date = models.DateTimeField(default=timezone.now)
     completed_date = models.DateTimeField(null=True, blank=True)
-    overdue_reason = models.CharField(max_length=5000, null=True, default=False)
+    overdue_reason = models.CharField(max_length=5000, null=True, default="")
     completed_by = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='completed_tasks')
     completed_at = models.DateTimeField(null=True, blank=True)
     rework_by = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='reworked_tasks')
@@ -77,7 +78,7 @@ class Task(models.Model):
         if not self.next_reminder_date:
             self.next_reminder_date = timezone.now() + self.remind_every
         if self.completed and not self.completed_date:
-            self.completed_date = timezone.now().date()
+            self.completed_date = timezone.now()
         
         super().save(*args, **kwargs)
 
@@ -112,8 +113,7 @@ class Task(models.Model):
 
     def schedule_reminder_emails(self):
         if not self.completed:
-            countdown = self.remind_every.total_seconds()
-            send_reminder_email.apply_async((self.id,), countdown=countdown)    
+            async_task(send_reminder_email, self.id)
 
 class Employee(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)

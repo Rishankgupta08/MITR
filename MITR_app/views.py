@@ -1,12 +1,15 @@
 # Create your views here.
+import matplotlib
+matplotlib.use('Agg')
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from .models import Task, Employee, Subscription
 from .forms import TaskForm, RegistrationForm, LoginForm, EmployeeForm
+from .decorators import admin_required, coordinator_or_admin_required
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from datetime import date, datetime, timedelta
@@ -24,15 +27,20 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, timedelta
 from django.conf import settings
+from django_q.tasks import async_task
 from .tasks import (
     send_subscription_confirmation_email
 )
 
+import logging
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 def login_register_view(request):
+    active_form = None
     if request.method == 'POST':
         if 'login' in request.POST:  # Distinguish between login and register forms
+            active_form = 'login'
             login_form = LoginForm(request.POST)
             register_form = RegistrationForm()
 
@@ -43,63 +51,138 @@ def login_register_view(request):
                 if user is not None:
                     login(request, user)
                     # Check if the user is an employee
-                    is_employee = Employee.objects.filter(email=email).exists()
+                    is_employee = Employee.objects.filter(email__iexact=user.email).exists()
                     request.session['is_employee'] = is_employee
                     return redirect('dashboard')
-                else:
-                    messages.error(request, "Invalid email or password.")
-            else:
-                messages.error(request, "Login form is invalid.")
+
+            request.session['login_error'] = 'Invalid email or password.'
+            return redirect('login_register')
 
         elif 'register' in request.POST:  # Handle registration form submission
+            active_form = 'register'
             login_form = LoginForm()
             register_form = RegistrationForm(request.POST)
 
             if register_form.is_valid():
                 user = register_form.save(commit=False)
-                user.username = register_form.cleaned_data['email']  # Use email as the username
+                user.username = (
+                    request.POST.get('username')
+                    or register_form.cleaned_data['email']
+                )
+                user.company = (
+                    register_form.cleaned_data.get('company') or 'NTPL'
+                )
+                role = register_form.cleaned_data.get('role', 'employee')
+
+                # Never make registered users superuser
+                # Superuser is created ONLY via manage.py createsuperuser
+                user.is_superuser = False
+                user.is_staff = False
                 user.save()
 
-                # Authenticate the user immediately after registration
-                user = authenticate(
-                    request, 
-                    username=register_form.cleaned_data['email'], 
-                    password=register_form.cleaned_data['password1']
+                # Create Employee record linked to this user
+                employee, created = Employee.objects.get_or_create(
+                    email=user.email,
+                    defaults={
+                        'user': user,
+                        'name': user.username,
+                        'company': user.company,
+                        'coordinator': (role == 'coordinator'),
+                        'phone_number': '',
+                    }
                 )
+                if not created:
+                    employee.user = user
+                    employee.coordinator = (role == 'coordinator')
+                    if not employee.company:
+                        employee.company = user.company
+                    employee.save()
 
-                if user is not None:
-                    # Get the list of available backends
-                    backends = get_backends()
-
-                    # Set the backend on the user object
-                    for backend in backends:
-                        if backend.get_user(user.id) is not None:
-                            user.backend = f'{backend.__module__}.{backend.__class__.__name__}'
-                            break
-
-                    login(request, user)  # Log the user in after registration
-                    return redirect('dashboard')
-                else:
-                    messages.error(request, "Authentication failed after registration.")
+                login(
+                    request,
+                    user,
+                    backend='MITR_app.backends.EmailBackend',
+                )
+                request.session['is_employee'] = True
+                return redirect('dashboard')
             else:
-                # Log form errors
-                print("Registration form is invalid:", register_form.errors)
-                messages.error(request, f"Registration failed. Please check the form for errors: {register_form.errors}")
+                error_messages = {}
+                for field, errors in register_form.errors.items():
+                    # Convert internal field names to user-friendly labels
+                    field_labels = {
+                        'username': 'Username',
+                        'email': 'Email',
+                        'role': 'Role',
+                        'password1': 'Password',
+                        'password2': 'Confirm Password',
+                        'company': 'Company',
+                    }
+                    label = field_labels.get(field, field.replace('_', ' ').title())
+                    error_messages[label] = [str(e) for e in errors]
 
+                # Also clean up common Django password messages
+                if 'Confirm Password' in error_messages:
+                    cleaned = []
+                    for msg in error_messages['Confirm Password']:
+                        if 'too common' in msg:
+                            cleaned.append('Password is too common. Add letters and symbols.')
+                        elif 'entirely numeric' in msg:
+                            cleaned.append('Password cannot be only numbers.')
+                        elif 'too short' in msg:
+                            cleaned.append('Password must be at least 8 characters.')
+                        elif 'similar' in msg:
+                            cleaned.append('Password is too similar to your username or email.')
+                        else:
+                            cleaned.append(msg)
+                    error_messages['Confirm Password'] = cleaned
+                    error_messages['Confirm_Password'] = cleaned
+
+                if 'Password' in error_messages:
+                    cleaned = []
+                    for msg in error_messages['Password']:
+                        if 'too common' in msg:
+                            cleaned.append('Password is too common. Add letters and symbols.')
+                        elif 'entirely numeric' in msg:
+                            cleaned.append('Password cannot be only numbers.')
+                        elif 'too short' in msg:
+                            cleaned.append('Password must be at least 8 characters.')
+                        else:
+                            cleaned.append(msg)
+                    error_messages['Password'] = cleaned
+
+                request.session['register_errors'] = {
+                    'field_errors': error_messages,
+                    'general_error': 'Please fix the errors below.',
+                    'active_form': 'register',
+                }
+                return redirect('login_register')
+
+    # Retrieve session errors if any (GET request)
+    session_errors = request.session.pop('register_errors', None)
+    login_session_error = request.session.pop('login_error', None)
+
+    if session_errors:
+        active_form = session_errors.get('active_form', 'register')
+    elif login_session_error:
+        active_form = 'login'
     else:
-        login_form = LoginForm()
-        register_form = RegistrationForm()
+        active_form = ''
 
-    return render(request, 'login_register.html', {
-        'login_form': login_form,
-        'register_form': register_form
-    })
+    context = {
+        'login_form': LoginForm(),
+        'register_form': RegistrationForm(),
+        'active_form': active_form,
+        'field_errors': session_errors.get('field_errors', {}) if session_errors else {},
+        'general_error': session_errors.get('general_error', '') if session_errors else '',
+        'login_error': login_session_error or '',
+    }
+    return render(request, 'login_register.html', context)
 
 def logout_view(request):
     logout(request)
     return redirect('login_register')
 
-@csrf_exempt  
+@admin_required
 def update_coordinator(request, employee_id):
     if request.method == "POST":
         try:
@@ -134,85 +217,99 @@ def update_coordinator(request, employee_id):
 
 @login_required
 def dashboard_view(request):
-         from .tasks import send_initial_email
+    from .tasks import send_initial_email
+
+    user = request.user
+    company = user.company or 'NTPL'
+
+    # Determine role
+    is_admin = user.is_superuser
+    employee = (
+        Employee.objects.filter(user=user).first()
+        or Employee.objects.filter(email__iexact=user.email).first()
+    )
+
+    if is_admin:
+        # Admin sees all tasks in their company
+        tasks = Task.objects.filter(
+            employee__company=company
+        ).select_related('employee').order_by('-date_added')
+        is_coordinator = True
+        is_employee = False
+    elif employee and employee.coordinator:
+        # Coordinator sees all tasks in their company
+        tasks = Task.objects.filter(
+            employee__company=company
+        ).select_related('employee').order_by('-date_added')
+        is_coordinator = True
+        is_employee = False
+    elif employee:
+        # Regular employee sees ONLY their own tasks
+        tasks = Task.objects.filter(
+            employee=employee
+        ).select_related('employee').order_by('-date_added')
+        is_coordinator = False
+        is_employee = True
+    else:
+        tasks = Task.objects.none()
+        is_coordinator = False
+        is_employee = True
+
+    # HANDLE TASK FORM & EMPLOYEE FORM
+    form = TaskForm(user=request.user)
+    form_has_errors = False
+    employee_form = EmployeeForm()
+
+    if request.method == 'POST':
+        if 'taskForm' in request.POST and (is_admin or is_coordinator):
+            form = TaskForm(user=request.user, data=request.POST)
+            if form.is_valid():
+                task = form.save(commit=False)
+                task.date_added = timezone.now()
+                task.task_id = timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).strftime('%d%m%Y%H%M%S')
+                task.save()
+                async_task(send_initial_email, task.id)
+                return redirect(f'{reverse("dashboard")}?task_added=true')
+            else:
+                form_has_errors = True
+        elif 'addEmployeeForm' in request.POST and is_admin:
+            employee_form = EmployeeForm(request.POST)
+            if employee_form.is_valid():
+                new_emp = employee_form.save(commit=False)
+                new_emp.company = company
+                new_emp.save()
+                return redirect(f'{reverse("dashboard")}?employee_added=true')
+
+    # SEARCH
+    search_query = request.GET.get('search', '')
+    if search_query:
+        tasks = tasks.filter(title__icontains=search_query)
+
+    # Pagination
+    paginator = Paginator(tasks, 10)  # Show 10 tasks per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'tasks': page_obj,
+        'is_admin': is_admin,
+        'is_superuser': is_admin,
+        'is_coordinator': is_coordinator,
+        'is_employee': is_employee,
+        'employee': employee,
+        'today': date.today(),
+        'search_query': search_query,
+        'form': form,
+        'form_has_errors': form_has_errors,
+        'employee_form': employee_form,
+    }
+    return render(request, 'dashboard.html', context)
      
-         # CURRENT USER
-         user_email = request.user
-         company = user_email.company  # Get the company
-         is_superuser = user_email.is_superuser
-         
-         # Default values
-         employee = None
-         is_employee = False
-     
-         # Try to fetch the employee object if the user is not a superuser
-         if not is_superuser:
-             try:
-                 employee = Employee.objects.get(email=user_email)
-                 is_employee = True
-             except Employee.DoesNotExist:
-                 # Handle the case where the user is not linked to an employee
-                 employee = None
-                 print(f"No employee record found for user: {user_email}")
-     
-         # FILTER TASKS BASED ON USER STATUS
-         if is_employee and not employee.coordinator:
-             tasks = Task.objects.filter(employee__email=user_email.email).order_by('-date_added')
-         else:
-             tasks = Task.objects.filter(employee__company=company).order_by('-date_added')
-     
-         # HANDLE TASK FORM
-         form = TaskForm(user=request.user)
-         form_has_errors = False
-         employee_form = EmployeeForm()
-         
-         if request.method == 'POST':
-             if 'taskForm' in request.POST:
-                 form = TaskForm(user=request.user, data=request.POST)
-                 if form.is_valid():
-                     task = form.save(commit=False)
-                     task.date_added = timezone.now()
-                     task.task_id = timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).strftime('%d%m%Y%H%M%S')
-                     task.save()
-                     send_initial_email.delay(task.id)
-                     return redirect(f'{reverse("dashboard")}?task_added=true')  # Redirect to the dashboard
-                 else:
-                     form_has_errors = True
-             elif 'addEmployeeForm' in request.POST:
-                 employee_form = EmployeeForm(request.POST)
-                 if employee_form.is_valid():
-                     employee = employee_form.save(commit=False)
-                     employee.company = company
-                     employee.save()
-                     return redirect(f'{reverse("dashboard")}?employee_added=true')  # Redirect with employee_added parameter
-     
-         # SEARCH
-         search_query = request.GET.get('search', '')
-         if search_query:
-             tasks = tasks.filter(title__icontains=search_query)
-     
-         # Pagination
-         paginator = Paginator(tasks, 10)  # Show 10 tasks per page
-         page_number = request.GET.get('page')
-         page_obj = paginator.get_page(page_number)
-     
-         # RETURN VALUES
-         return render(request, 'dashboard.html', {
-             'is_employee': is_employee,
-             'is_superuser': is_superuser,
-             'today': date.today(),
-             'tasks': page_obj,
-             'search_query': search_query,
-             'form': form,
-             'form_has_errors': form_has_errors,
-             'employee_form': employee_form,
-             'employee': employee,
-         })
-     
+@admin_required
 def add_employee_view(request):
     # Check if the user is authenticated
     if not request.user.is_authenticated:
-        return redirect('login')
+        return redirect('login_register')
 
     # Retrieve the logged-in user's company
     company = request.user.company
@@ -240,20 +337,18 @@ def add_employee_view(request):
 def task_view(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     user = request.user
-    
-    # Check if user is an employee by querying the database
-    try:
-        employee = Employee.objects.get(email=user.email)
-        is_employee = True
-    except Employee.DoesNotExist:
-        employee = None
-        is_employee = False
-    
+    is_admin = user.is_superuser
+    employee = (
+        Employee.objects.filter(user=user).first()
+        or Employee.objects.filter(email__iexact=user.email).first()
+    )
+    is_coordinator = bool(is_admin or (employee and employee.coordinator))
+    is_employee = bool(not is_admin and not is_coordinator)
+
     form = TaskForm(request.POST or None, instance=task)
 
     if request.method == 'POST':
         if is_employee and 'mark_as_completed' in request.POST:
-            # Check if the form is valid and if the overdue_reason is provided
             overdue_reason = request.POST.get('overdue_reason', '').strip()
             if not overdue_reason and task.submission_date <= datetime.now().date():
                 form.add_error('overdue_reason', 'Reason for overdue is required if you mark the task as completed.')
@@ -263,14 +358,13 @@ def task_view(request, task_id):
                 task.overdue_reason = overdue_reason
                 task.save()
                 return redirect('task_view', task_id=task.id)
-        elif not is_employee and 'complete_task' in request.POST:
+        elif (is_admin or is_coordinator) and 'complete_task' in request.POST:
             task.completed = True
-            task.completed_at = datetime.now()  # Update completion date
-            task.completed_by = user  # Set the user who completed the task
+            task.completed_at = datetime.now()
+            task.completed_by = user
             task.save()
             return redirect('task_view', task_id=task.id)
-        elif not is_employee and 'rework_task' in request.POST:
-            # Handle reworking the task
+        elif (is_admin or is_coordinator) and 'rework_task' in request.POST:
             task.rework_by = user
             task.rework_date = timezone.now()
             task.save()
@@ -279,13 +373,16 @@ def task_view(request, task_id):
     context = {
         'task': task,
         'today': now().astimezone(pytz.timezone('Asia/Kolkata')).date(),
+        'is_admin': is_admin,
+        'is_coordinator': is_coordinator,
         'is_employee': is_employee,
-        'form': form,  # Pass the form to the template
+        'form': form,
         'employee': employee,
     }
     return render(request, 'task_view.html', context)
 
  
+@admin_required
 def delete_task_view(request, task_id):
     # Get the task object or return a 404 error if not found
     task = get_object_or_404(Task, id=task_id)
@@ -301,6 +398,7 @@ def delete_task_view(request, task_id):
     return redirect('dashboard')
 
  
+@admin_required
 def set_incomplete_view(request, task_id):
     # Get the task object or return a 404 error if not found
     task = get_object_or_404(Task, id=task_id)
@@ -318,6 +416,7 @@ def set_incomplete_view(request, task_id):
     return redirect('task_view', task_id=task.id)
 
  
+@coordinator_or_admin_required
 def employee_list_view(request):
     company = request.user.company
     user_email = request.user
@@ -330,7 +429,7 @@ def employee_list_view(request):
     # Try to fetch the employee object if the user is not a superuser
     if not is_superuser:
         try:
-            employee = Employee.objects.get(email=user_email)
+            employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
             is_employee = True
             # Redirect regular employees to dashboard
             if not employee.coordinator:
@@ -343,6 +442,7 @@ def employee_list_view(request):
     return render(request, 'employee_list.html', {'employees': employees,'is_employee': is_employee,'is_superuser': is_superuser,'employee': employee})
 
  
+@admin_required
 def remove_employee_view(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     if request.method == 'POST':
@@ -352,6 +452,7 @@ def remove_employee_view(request, employee_id):
     return render(request, 'confirm_remove_employee.html', {'employee': employee})
 
  
+@admin_required
 def confirm_remove_employee(request, id):
     employee = get_object_or_404(Employee, id=id)
     if request.method == 'POST':
@@ -402,6 +503,7 @@ def plot_employee_progress(employee_id):
     # ✅ return MEDIA_URL
     return settings.MEDIA_URL + f'progress/{image_filename}'
  
+@coordinator_or_admin_required
 def employee_progress(request, employee_id):
     user_email = request.user
     is_superuser = user_email.is_superuser
@@ -412,7 +514,7 @@ def employee_progress(request, employee_id):
     # Try to fetch the employee object if the user is not a superuser
     if not is_superuser:
         try:
-            current_employee = Employee.objects.get(email=user_email)
+            current_employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
             # Redirect regular employees to dashboard
             if not current_employee.coordinator:
                 return redirect('dashboard')
@@ -426,7 +528,13 @@ def employee_progress(request, employee_id):
     completed_tasks = tasks.filter(completed=True).count()
     pending_tasks = tasks.filter(completed=False).count()
     overdue_tasks = Task.objects.filter(employee=employee, completed=False, submission_date__lt=datetime.now().date()).count()
-    progress_graph_url = plot_employee_progress(employee_id)
+    progress_graph_url = None
+    try:
+        progress_graph_url = plot_employee_progress(employee_id)
+        chart_generated = True
+    except Exception as e:
+        logger.warning(f"Chart generation failed: {e}")
+        chart_generated = False
     today = datetime.today().date()
     is_superuser = request.user.is_superuser
     context = {
@@ -438,6 +546,8 @@ def employee_progress(request, employee_id):
         'pending_tasks': pending_tasks,
         'tasks': tasks,
         'progress_graph_url': progress_graph_url,
+        'chart_url': progress_graph_url,
+        'chart_generated': chart_generated,
         'today': today,
         'overdue_tasks' : overdue_tasks,
     }
@@ -462,6 +572,7 @@ def generate_summary(date):
 
     return summary
 
+@coordinator_or_admin_required
 def summary_report(request):
      user_email = request.user
      is_superuser = user_email.is_superuser
@@ -473,7 +584,7 @@ def summary_report(request):
      # Try to fetch the employee object if the user is not a superuser
      if not is_superuser:
          try:
-             employee = Employee.objects.get(email=user_email)
+             employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
              is_employee = True
              # Redirect regular employees to dashboard
              if not employee.coordinator:
@@ -513,7 +624,7 @@ def summary_report(request):
      # Try to fetch the employee object if the user is not a superuser
      if not is_superuser:
          try:
-             employee = Employee.objects.get(email=user_email)
+             employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
              is_employee = True
          except Employee.DoesNotExist:
              # Handle the case where the user is not linked to an employee
@@ -545,6 +656,7 @@ def remove_timezone_from_datetime(dt):
         return dt.replace(tzinfo=None)
     return dt
 
+@coordinator_or_admin_required
 def download_summary_report(request, date, report_type, status_filter):
     selected_date = datetime.strptime(date, '%Y-%m-%d').date()
 
@@ -623,7 +735,7 @@ def download_summary_report(request, date, report_type, status_filter):
     
     return output
 
-@login_required
+@coordinator_or_admin_required
 def subscriptions(request):
                 # Check if user is superuser first
     user_email = request.user
@@ -637,7 +749,7 @@ def subscriptions(request):
     # Try to fetch the employee object if the user is not a superuser
     if not is_superuser:
         try:
-            employee = Employee.objects.get(email=user_email)
+            employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
             is_employee = True
         except Employee.DoesNotExist:
             # Handle the case where the user is not linked to an employee
@@ -665,7 +777,7 @@ def subscriptions(request):
     
     # For regular users, check employee status
     try:
-        employee = Employee.objects.get(user=request.user)
+        employee = Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email)
         if not employee.coordinator:
             return redirect('dashboard')
             
@@ -689,20 +801,11 @@ def subscriptions(request):
                 'employee': employee
             }
             return render(request, 'subscriptions.html', context)
-        elif employee.coordinator:
-            context = {
-                'subscriptions': page_obj,
-                'reminder_choices': Subscription.REMINDER_CHOICES,
-                'now': current_time,
-                'is_employee': is_employee,
-                'is_superuser': is_superuser,
-                'employee': employee
-            }
-            return render(request, 'subscriptions.html', context)
+
         else:
             return redirect('dashboard')
 
-@login_required
+@coordinator_or_admin_required
 def add_subscription(request):
     # Check if user is superuser first
     if request.user.is_superuser:
@@ -721,13 +824,13 @@ def add_subscription(request):
                 customer_phone=request.POST['customer_phone'],
                 end_date=end_date,
             )
-            send_subscription_confirmation_email.delay(subscription.id)
+            async_task(send_subscription_confirmation_email, subscription.id)
             return redirect('subscriptions')
         return redirect('subscriptions')
 
     # For non-superusers, check employee status
     try:
-        employee = Employee.objects.get(user=request.user)
+        employee = Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email)
         if not employee.coordinator:
             return redirect('dashboard')
             
@@ -746,7 +849,7 @@ def add_subscription(request):
                 customer_phone=request.POST['customer_phone'],
                 end_date=end_date,
             )
-            send_subscription_confirmation_email.delay(subscription.id)
+            async_task(send_subscription_confirmation_email, subscription.id)
             return redirect('subscriptions')
             
         return redirect('subscriptions')

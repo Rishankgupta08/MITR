@@ -1,17 +1,17 @@
-
-from celery import shared_task
+from django_q.tasks import async_task, schedule
+from django_q.models import Schedule
 from django.core.mail import send_mail
-from datetime import timedelta
+from datetime import date, timedelta
 import logging
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-@shared_task
+
 def send_initial_email(task_id=None):
     from .models import Task
 
-    if task_id is not None:
+    if task_id is None:
         logger.error("Initial Email not sent: task_id is None")
 
     try:
@@ -47,11 +47,10 @@ Web: www.nescubeonline.com Support Partner:  www.nestechindia.com
     except Exception as e:
         logger.error(f"Error sending initial email for task {task_id}: {e}")
 
-@shared_task
 def send_reminder_email(task_id=None):
     from .models import Task
 
-    if task_id is not None:
+    if task_id is None:
         logger.error("Reminder Email not sent: task_id is None")
 
     try:
@@ -103,7 +102,16 @@ Web: www.nescubeonline.com Support Partner:  www.nestechindia.com
             task.save()
 
             # Schedule the next reminder
-            send_reminder_email.apply_async((task.id,), eta=task.next_reminder_date)
+            if not task.completed:
+                schedule_name = f'reminder_task_{task_id}'
+                Schedule.objects.filter(name=schedule_name).delete()
+                schedule(
+                    'MITR_app.tasks.send_reminder_email',
+                    task_id,
+                    schedule_type=Schedule.ONCE,
+                    next_run=timezone.now() + task.remind_every,
+                    name=schedule_name,
+                )
 
         # Overdue tasks
         elif current_time.date() >= task.submission_date:
@@ -146,36 +154,43 @@ Web: www.nescubeonline.com Support Partner:  www.nestechindia.com
             task.save()
 
             # Schedule the next overdue reminder
-            send_reminder_email.apply_async((task.id,), eta=current_time + timedelta(hours=12))
+            if not task.completed:
+                schedule_name = f'reminder_task_{task_id}'
+                Schedule.objects.filter(name=schedule_name).delete()
+                schedule(
+                    'MITR_app.tasks.send_reminder_email',
+                    task_id,
+                    schedule_type=Schedule.ONCE,
+                    next_run=timezone.now() + timedelta(hours=12),
+                    name=schedule_name,
+                )
 
     except Task.DoesNotExist:
         logger.error(f"Task {task_id} does not exist")
     except Exception as e:
         logger.error(f"Error sending reminder email for task {task_id}: {e}")
 
-@shared_task
+
 def check_overdue_tasks(task_id=None):
     from .models import Task
-    from datetime import datetime, timedelta
-
-    if task_id is not None:
-        logger.info("\r\n No task to check")
-        return
 
     try:
-        today = datetime.now().date()
-        overdue_tasks = Task.objects.filter(completed=False, submission_date__lt=today, id=task_id)
+        today = date.today()
+        overdue_tasks = Task.objects.filter(
+            completed=False,
+            submission_date__lt=date.today()
+        )
 
         for task in overdue_tasks:
             overdue_since = today - task.submission_date
             if overdue_since.days <= 30:
-                send_reminder_email.delay(task.id)
+                async_task(send_reminder_email, task.id)
         
         logger.info("Checked for overdue tasks and scheduled reminders")
     except Exception as e:
         logger.error(f"Error checking overdue tasks: {e}")
 
-@shared_task
+
 def send_subscription_confirmation_email(subscription_id,email=None):
     logger.info(f" CC EMAIL SENT to {email}")
     from .models import Subscription
@@ -212,7 +227,6 @@ Web: www.nescubeonline.com Support Partner:  www.nestechindia.com
     except Exception as e:
         logger.error(f"Error sending subscription confirmation email for subscription {subscription_id}: {e}")
 
-@shared_task
 def send_subscription_reminder_email(subscription_id,email=None):
     from .models import Subscription
     try:
@@ -246,7 +260,6 @@ Web: www.nescubeonline.com Support Partner:  www.nestechindia.com
     except Exception as e:
         logger.error(f"Error sending subscription reminder email for subscription {subscription_id}: {e}")
 
-@shared_task
 def check_subscription_reminders():
     from .models import Subscription
     from datetime import datetime, timedelta
@@ -265,7 +278,7 @@ def check_subscription_reminders():
             reminder_date = subscription.end_date - timedelta(days=days_before)
             
             if now >= reminder_date:
-                send_subscription_reminder_email.delay(subscription.id)
+                async_task(send_subscription_reminder_email, subscription.id)
                 subscription.reminder_sent = True
                 subscription.save()
                 
@@ -273,7 +286,7 @@ def check_subscription_reminders():
     except Exception as e:
         logger.error(f"Error checking subscription reminders: {e}")
 
-@shared_task
+
 def send_subscription_ended_email(subscription_id):
     from .models import Subscription
     try:
@@ -307,7 +320,6 @@ Web: www.nescubeonline.com Support Partner:  www.nestechindia.com
         logger.error(f"Error sending subscription ended email for subscription {subscription_id}: {e}")
 
 
-@shared_task
 def check_ended_subscriptions():
     from .models import Subscription
     try:
@@ -318,7 +330,7 @@ def check_ended_subscriptions():
         )
         
         for subscription in ended_subscriptions:
-            send_subscription_ended_email.delay(subscription.id)
+            async_task(send_subscription_ended_email, subscription.id)
             subscription.end_notification_sent = True
             subscription.save()
                 

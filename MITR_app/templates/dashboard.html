@@ -513,13 +513,13 @@
       <i class="fas fa-angle-double-left"></i>
       <span>Collapse</span>
     </button>
-    {% if employee.coordinator or is_superuser %}
+    {% if is_admin or is_coordinator %}
     <button class="sidebar-btn add-task-btn">
       <i class="fas fa-plus"></i>
       <span>Add Task</span>
     </button>
-    {%endif%}
-    {% if employee.coordinator or user.is_superuser %}
+    {% endif %}
+    {% if is_admin or is_coordinator %}
     <a href="{% url 'subscriptions' %}" class="sidebar-link">
       <button class="sidebar-btn">
         <i class="fas fa-ticket-alt"></i>
@@ -527,7 +527,7 @@
       </button>
     </a>
     {% endif %}
-    {% if employee.coordinator or is_superuser %}
+    {% if is_admin or is_coordinator %}
     <a href="{% url 'employee_list' %}" class="sidebar-link">
     <button class="sidebar-btn">
       <i class="fas fa-users"></i>
@@ -535,15 +535,15 @@
     </button>
     </a>
     {% endif %}
-    {% if employee.coordinator or is_superuser %}
+    {% if is_admin or is_coordinator %}
     <a href="{% url 'summary_report' %}"class="sidebar-link">
     <button class="sidebar-btn">
       <i class="fas fa-chart-line"></i>
       <span>Summary<br>Report</span>
     </button>
     </a>
-    {% endif%}
-    {% if employee.coordinator or is_superuser %}
+    {% endif %}
+    {% if is_admin %}
     <button class="sidebar-btn add-employee-btn">
       <i class="fas fa-user-plus"></i>
       <span>Add<br>Employee</span>
@@ -565,12 +565,12 @@
     <div class="dashboard-header">
       <h1 style="font-size: 45px;">Dashboard</h1>
       <div class="user-info">
-        <p> {% if employee.coordinator %}
+        <p> {% if is_admin %}
+                <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an Admin:</p> {{ user.username }}
+            {% elif is_coordinator %}
                 <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as a co-ordinator:</p> {{ user.username }} 
             {% elif is_employee %}
                 <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an employee : </p> {{ user.username }}    
-            {% elif is_superuser %}
-                <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an Admin:</p> {{ user.username }}
             {% else %}
                 <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You are unemployed</p> {{user.username}}
             {% endif %}
@@ -599,7 +599,7 @@
             <th>Task ID</th>
             <th>Task Title</th>
             <th>Client Name</th>
-            {% if is_superuser or employee.coordinator %}
+            {% if is_admin or is_coordinator %}
               <th>Phone Number</th>
             {% endif %}
             <th>Client Email</th>
@@ -608,7 +608,9 @@
             <th>Deadline</th>
             <th>Status</th>
             <th>Details</th>
-            <th>Verification</th>
+            {% if is_admin or is_coordinator %}
+              <th>Verification</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -617,7 +619,7 @@
             <td>{{task.task_id}}</td>
             <td>{{ task.title|slice:":10" }}...</td>
             <td>{{ task.client_company }}</td>
-            {% if is_superuser or employee.coordinator %}
+            {% if is_admin or is_coordinator %}
               <td>{{ task.client_phone_number }}</td>
             {% endif %}
             <td>{{ task.email|slice:":10" }}...</td>
@@ -626,7 +628,7 @@
             <td>{{ task.submission_date }}</td>
             <td>
               {% if task.completed %}
-                {% if task.completed_date > task.submission_date %}
+                {% if task.completed_date and task.completed_date.date > task.submission_date %}
                   <span class="status-badge status-completed-overdue">Completed Overdue</span>
                 {% else %}
                   <span class="status-badge status-completed">Completed</span>
@@ -638,9 +640,10 @@
               {% endif %}
             </td>
             <td><a href="{% url 'task_view' task.id %}" class="link-open">Open</a></td>
+            {% if is_admin or is_coordinator %}
             <td>
               {% if task.completed %}
-                  {% if task.completed_date.date > task.submission_date %}
+                  {% if task.completed_date and task.completed_date.date > task.submission_date %}
                       <div class="status-overdue-marked-completed-icon"><i class ="fas fa-check icon-white-tick"></i>
                         <span class="w-8 h-8 bg-black rounded-full flex items-center justify-center"><i class="fas fa-user-check text-red-500 text-1.75xl"></i></span>
                       </div>
@@ -669,6 +672,7 @@
                   {% endif %}
               {% endif %}
             </td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>
@@ -763,7 +767,7 @@
           </div>
           <button type="submit" class="save-btn" name="addEmployeeForm">Add Employee</button>
         </form>
-        <div class="error"></div>
+        <div id="employeeError" class="error"></div>
     </div>
 </div>
 
@@ -850,7 +854,7 @@
         const employeeEmail = document.getElementById('email').value.trim();
         const employeeRole = document.getElementById('phone_number').value.trim();
 
-        if (!name || !email || !phone_number) {
+        if (!employeeName || !employeeEmail || !employeeRole) {
             document.getElementById('employeeError').innerText = ' ';
             return;
         }
@@ -904,7 +908,7 @@
     }
 
     function logout() {
-        window.location.href = 'login_register.html';
+        window.location.href = "{% url 'logout' %}";
     }
 
     document.addEventListener('DOMContentLoaded', function() {

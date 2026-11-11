@@ -236,25 +236,27 @@
       <h1 style="color: white;">Task Details</h1>
     </div>
     <div class="header-right">
-      {% if not task.completed and not is_employee and user.is_superuser and task.employee_marked_completed %}
+      {% if is_admin or is_coordinator %}
+        {% if not task.completed and task.employee_marked_completed %}
           <form method="POST" action="{% url 'task_view' task.id %}">
               {% csrf_token %}
               <button type="submit" name="rework_task" class="rework-task-btn">Rework Task</button>
           </form>
-      {% endif %}
-      {% if not task.completed and not is_employee and user.is_superuser %}
+        {% endif %}
+        {% if not task.completed %}
           <form method="POST" action="{% url 'task_view' task.id %}">
-          {% csrf_token %}
-          <button type="submit" name="complete_task" class="complete-task-btn">Complete Task</button>
-        </form>
+              {% csrf_token %}
+              <button type="submit" name="complete_task" class="complete-task-btn">Complete Task</button>
+          </form>
+        {% endif %}
       {% endif %}
-      {% if task.completed and not is_employee and user.is_superuser%}
+      {% if task.completed and is_admin %}
           <form method="POST" action="{% url 'set_incomplete' task.id %}">
               {% csrf_token %}
               <button type="submit" class="incomplete-task-btn">Set as Incomplete</button>
           </form>
       {% endif %}
-      {% if not is_employee and user.is_superuser %}
+      {% if is_admin %}
         <form method="post" action="{% url 'delete_task' task.id %}">
           {% csrf_token %}
           <button type="submit" class="delete-task-btn"><i class="fas fa-trash-alt"></i></button>

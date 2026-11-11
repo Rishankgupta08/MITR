@@ -515,17 +515,19 @@
                 console.log('Toggle clicked for employee:', employeeId);
                 console.log('New coordinator status:', isCoordinator);
 
-                // Create FormData object
-                const formData = new FormData();
-                formData.append('coordinator', isCoordinator);
+                const csrfToken = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('csrftoken='))
+                    ?.split('=')[1];
 
                 // Send an AJAX request to update the coordinator status
                 fetch(`/update-coordinator/${employeeId}/`, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json',
                     },
-                    body: formData
+                    body: JSON.stringify({ coordinator: isCoordinator })
                 })
                 .then(response => {
                     console.log('Response status:', response.status);

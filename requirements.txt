@@ -1,4 +1,3 @@
-celery
 django
 matplotlib
 pandas
@@ -7,8 +6,16 @@ xlsxwriter
 whitenoise
 django-extensions
 Werkzeug
-django_redis
 pyOpenSSL
 gunicorn
-crontab
 requests
+# --- secrets / config ---
+python-decouple
+dj-database-url
+# --- task queue (django-q2, ORM backend) ---
+django-q2
+
+# --- PostgreSQL driver ---
+psycopg2-binary
+supervisor
+

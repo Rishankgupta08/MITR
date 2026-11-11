@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Task Management System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -103,6 +104,7 @@
       transition: right 0.3s ease; /* Transition for sliding effect */
       border-radius: 0 10px 10px 0; /* Curve the right edges */
       z-index: 10; /* Ensure it's above other content */
+      overflow-y: auto;
     }
 
     .login-form.active, .register-form.active {
@@ -169,14 +171,14 @@
     <div class="company-icon">
       <img src='{% static "mitr_logo.jpg" %}' alt="Company Logo"> <!-- Replace with your company logo URL -->
     </div>
-    <div class="login-tabs">
+    <div class="login-tabs"{% if active_form %} style="display: none;"{% endif %}>
       <h2>Welcome</h2>
-      <button class="tab-button" onclick="showLogin()">Login</button>
-      <button class="tab-button" onclick="showRegister()">Register</button>
+      <button id="login-tab" class="tab-button" onclick="showLogin()">Login</button>
+      <button id="register-tab" class="tab-button" onclick="showRegister()">Register</button>
       <div class="error-message" id="error-message"></div>
     </div>
 
-    <form method="POST" class="login-form" id="login-form">
+    <form method="POST" class="login-form{% if active_form == 'login' %} active{% endif %}" id="login-form" action="{% url 'login_register' %}">
       {% csrf_token %}
       <div class="header-container">
         <button type="button" class="back-button" onclick="hideLogin()">
@@ -185,16 +187,18 @@
         <h2>Login</h2>
       </div>
 
-      {% for message in messages %}
-      <p class="error-message">{{ message }}</p>
-      {% endfor %}
+      {% if login_error %}
+      <div class="error-banner mb-4 p-3 rounded-lg bg-red-500 bg-opacity-20 border border-red-400">
+        <p class="text-red-400 text-sm">⚠ {{ login_error }}</p>
+      </div>
+      {% endif %}
 
       <input type="email" name="email" class="login-input" placeholder="Email">
       <input type="password" name="password" class="login-input" placeholder="Password">
       <button type="submit" class="login-button" name="login">Login</button>
     </form>
 
-    <form method="POST" class="register-form" id="register-form">
+    <form method="POST" class="register-form{% if active_form == 'register' %} active{% endif %}" id="register-form" action="{% url 'login_register' %}">
       {% csrf_token %}
       <div class="header-container">
         <button type="button" class="back-button" onclick="hideRegister()">
@@ -203,15 +207,61 @@
         <h2>Register</h2>
       </div>
 
-      {% for message in messages %}
-      <p class="error-message">{{ message }}</p>
-      {% endfor %}
+      <!-- General error at top (small, clean) -->
+      {% if general_error %}
+      <div class="error-banner mb-4 p-3 rounded-lg bg-red-500 bg-opacity-20 border border-red-400">
+        <p class="text-red-400 text-sm font-medium">{{ general_error }}</p>
+      </div>
+      {% endif %}
 
       <input type="text" name="username" class="register-input" placeholder="Username">
+      {% if field_errors.Username %}
+        {% for err in field_errors.Username %}
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        {% endfor %}
+      {% endif %}
+
       <input type="email" name="email" class="register-input" placeholder="Email">
+      {% if field_errors.Email %}
+        {% for err in field_errors.Email %}
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        {% endfor %}
+      {% endif %}
+
+      <select name="role" class="register-input" style="background-color: rgba(255, 255, 255, 0.9); color: #333;">
+        <option value="employee" style="color: #333;">Register as Employee</option>
+        <option value="coordinator" style="color: #333;">Register as Coordinator</option>
+      </select>
+      {% if field_errors.Role %}
+        {% for err in field_errors.Role %}
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        {% endfor %}
+      {% endif %}
+
       <input type="password" name="password1" class="register-input" placeholder="Password">
+      <p class="text-gray-400 text-xs mt-1 ml-1">
+        Use 8+ characters with letters, numbers and symbols
+      </p>
+      {% if field_errors.Password %}
+        {% for err in field_errors.Password %}
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        {% endfor %}
+      {% endif %}
+
       <input type="password" name="password2" class="register-input" placeholder="Confirm Password">
+      {% if field_errors.Confirm_Password %}
+        {% for err in field_errors.Confirm_Password %}
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        {% endfor %}
+      {% endif %}
+
       <input type="text" name="company" class="register-input" placeholder="Company">
+      {% if field_errors.Company %}
+        {% for err in field_errors.Company %}
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        {% endfor %}
+      {% endif %}
+
       <button type="submit" class="register-button" name="register">Register</button>
     </form>
   </div>
@@ -236,6 +286,29 @@
       document.getElementById('register-form').classList.remove('active');
       document.querySelector('.login-tabs').style.display = 'flex';
     }
+
+    // On page load, check active_form from Django context
+    document.addEventListener('DOMContentLoaded', function() {
+      const activeForm = "{{ active_form }}";
+      if (activeForm === 'register') {
+        showRegister();
+      } else if (activeForm === 'login') {
+        showLogin();
+      }
+
+      // Auto-scroll to error on page load if errors exist
+      const errorBanner = document.querySelector('.error-banner');
+      const inlineError = document.querySelector('.inline-error');
+      const target = errorBanner || inlineError;
+      if (target) {
+        setTimeout(() => {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }, 100);
+      }
+    });
   </script>
 </body>
 </html>

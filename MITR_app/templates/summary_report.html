@@ -408,7 +408,7 @@
                             <td>{{ task.completed_date }}</td>
                             <td>
                                 {% if task.completed %}
-                                    {% if task.completed_date > task.submission_date %}
+                                    {% if task.completed_date and task.completed_date.date > task.submission_date %}
                                         <span class="status-badge status-completed-overdue">Completed Overdue</span>
                                     {% else %}
                                         <span class="status-badge status-completed">Completed</span>

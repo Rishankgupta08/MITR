@@ -8,13 +8,29 @@ from django.contrib.auth.forms import UserCreationForm
 
 CustomUser = get_user_model()
 
+ROLE_CHOICES = [
+    ('employee', 'Employee'),
+    ('coordinator', 'Coordinator'),
+]
+
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
-    company = forms.CharField(max_length=100, required=True)
+    role = forms.ChoiceField(
+        choices=ROLE_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={
+            'class': 'w-full px-4 py-3 rounded-full bg-white bg-opacity-20 text-white border border-white border-opacity-30 focus:outline-none focus:border-white',
+        })
+    )
+    company = forms.CharField(
+        max_length=100,
+        required=False,
+        initial='NTPL',
+    )
 
     class Meta:
         model = CustomUser
-        fields = ['email', 'company', 'password1', 'password2']
+        fields = ['email', 'role', 'company', 'password1', 'password2']
 
     def clean(self):
         cleaned_data = super().clean()
@@ -83,8 +99,6 @@ class TaskForm(forms.ModelForm):
               'employee': forms.Select(attrs={'class': 'form-control'}),
               'submission_date': forms.DateInput(attrs={'type': 'date'}),  # Add a class for styling if needed
           }
-        
-        employee = forms.ModelChoiceField(queryset=Employee.objects.none(), required=True)
 
 
     def clean_submission_date(self):
