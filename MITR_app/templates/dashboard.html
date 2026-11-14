@@ -340,6 +340,12 @@
       cursor: pointer;
       border-radius: 50%;
       padding: 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      width: 32px;
+      height: 32px;
     }
     .error {
       color: red;
@@ -520,27 +526,21 @@
     </button>
     {% endif %}
     {% if is_admin or is_coordinator %}
-    <a href="{% url 'subscriptions' %}" class="sidebar-link">
-      <button class="sidebar-btn">
-        <i class="fas fa-ticket-alt"></i>
-        <span>Subscriptions</span>
-      </button>
+    <a href="{% url 'subscriptions' %}" class="sidebar-btn sidebar-link">
+      <i class="fas fa-ticket-alt"></i>
+      <span>Subscriptions</span>
     </a>
     {% endif %}
     {% if is_admin or is_coordinator %}
-    <a href="{% url 'employee_list' %}" class="sidebar-link">
-    <button class="sidebar-btn">
+    <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link">
       <i class="fas fa-users"></i>
       <span>Employee Management</span>
-    </button>
     </a>
     {% endif %}
     {% if is_admin or is_coordinator %}
-    <a href="{% url 'summary_report' %}"class="sidebar-link">
-    <button class="sidebar-btn">
+    <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
       <i class="fas fa-chart-line"></i>
       <span>Summary<br>Report</span>
-    </button>
     </a>
     {% endif %}
     {% if is_admin %}
@@ -549,15 +549,6 @@
       <span>Add<br>Employee</span>
     </button>
     {% endif %}
-    <!-- <a>
-    <form method="POST" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit" class="sidebar-btn logout-btn logout-option">
-      <i class="fas fa-sign-out-alt"></i>
-      <span>Logout</span>
-    </button>
-    </form>
-    </a> -->
     <div class="version-text">MITR v2.0.1</div>
   </div>
 
@@ -682,7 +673,7 @@
 
   <div id="popup" class="popup">
     <div class="popup-content">
-      <a href="{% url 'dashboard' %}"><button class="close-btn" onclick="hidePopup()"><i class="fas fa-arrow-left"></i></button></a>
+      <a href="{% url 'dashboard' %}" class="close-btn" onclick="hidePopup()" aria-label="Back to dashboard"><i class="fas fa-arrow-left"></i></a>
       <h2 style="font-size: 25px;">Add New Task</h2>
       <form method="post" id="taskForm" name="taskForm">
         {% csrf_token %}

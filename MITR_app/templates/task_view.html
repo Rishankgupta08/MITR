@@ -49,9 +49,13 @@
       cursor: pointer;
       margin-right: 20px;
       transition: background-color 0.3s ease;
+      display: inline-flex;
       align-items: center; /* Center icon vertically */
       justify-content: center; /* Center icon horizontally */
       width: 38px;
+      height: 38px;
+      text-decoration: none;
+      box-sizing: border-box;
     }
 
     .back-btn:hover {
@@ -228,10 +232,8 @@
 <body>
   <div class="header">
     <div class="header-left">
-      <a href="{% url 'dashboard' %}">
-      <button class="back-btn">
-        <i class="fas fa-arrow-left"></i>  <!-- Icon only -->
-      </button>
+      <a href="{% url 'dashboard' %}" class="back-btn" aria-label="Back to dashboard">
+        <i class="fas fa-arrow-left"></i>
       </a>
       <h1 style="color: white;">Task Details</h1>
     </div>
