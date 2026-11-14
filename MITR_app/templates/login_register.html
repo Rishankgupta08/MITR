@@ -30,7 +30,7 @@
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
       width: 600px; /* Fixed width */
-      height: 400px; /* Fixed height */
+      height: 420px; /* Fixed height */
       overflow: hidden; /* Ensure no overflow */
       position: relative; /* For positioning the sliding panel */
     }
@@ -42,6 +42,7 @@
       align-items: center;
       width: 150px; /* Fixed width */
       border-radius: 10px 0 0 10px; /* Curved edges */
+      flex-shrink: 0;
     }
 
     .company-icon img {
@@ -98,16 +99,18 @@
       right: -100%; /* Start off-screen */
       width: calc(100% - 150px); /* Full width minus the company icon */
       height: 100%; /* Full height */
-      background-color: transparent; /* Set to transparent */
+      background-color: rgba(30, 30, 30, 0.96); /* Opaque solid panel so forms/tabs never overlap or bleed through */
       padding: 20px;
       box-sizing: border-box;
       transition: right 0.3s ease; /* Transition for sliding effect */
       border-radius: 0 10px 10px 0; /* Curve the right edges */
       z-index: 10; /* Ensure it's above other content */
       overflow-y: auto;
+      display: none; /* Hidden by default when inactive so no ghosting occurs */
     }
 
     .login-form.active, .register-form.active {
+      display: block; /* Visible when active */
       right: 0; /* Slide in */
     }
 
@@ -151,10 +154,18 @@
     .header-container {
       display: flex;
       align-items: center; /* Center vertically */
-      margin-bottom: 0px; /* Space below the header */
-      margin-top: -18px;
+      margin-bottom: 12px; /* Space below the header */
+      margin-top: 0px;
       color: white;
     }
+
+    .header-container h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+      margin: 0;
+    }
+
     .messages {
       list-style-type: none;
       padding: 0;
@@ -169,7 +180,7 @@
 <body>
   <div class="login-container">
     <div class="company-icon">
-      <img src='{% static "mitr_logo.jpg" %}' alt="Company Logo"> <!-- Replace with your company logo URL -->
+      <img src='{% static "mitr_logo.jpg" %}' alt="Company Logo">
     </div>
     <div class="login-tabs"{% if active_form %} style="display: none;"{% endif %}>
       <h2>Welcome</h2>
@@ -178,7 +189,8 @@
       <div class="error-message" id="error-message"></div>
     </div>
 
-    <form method="POST" class="login-form{% if active_form == 'login' %} active{% endif %}" id="login-form" action="{% url 'login_register' %}">
+    <!-- Login Form -->
+    <form method="POST" class="login-form{% if active_form == 'login' %} active{% endif %}" id="login-form" action="{% url 'login_register' %}" style="{% if active_form == 'login' %}display: block; right: 0;{% else %}display: none;{% endif %}">
       {% csrf_token %}
       <div class="header-container">
         <button type="button" class="back-button" onclick="hideLogin()">
@@ -193,12 +205,13 @@
       </div>
       {% endif %}
 
-      <input type="email" name="email" class="login-input" placeholder="Email">
-      <input type="password" name="password" class="login-input" placeholder="Password">
+      <input type="email" name="email" class="login-input" placeholder="Email" required autocomplete="email">
+      <input type="password" name="password" class="login-input" placeholder="Password" required autocomplete="current-password">
       <button type="submit" class="login-button" name="login">Login</button>
     </form>
 
-    <form method="POST" class="register-form{% if active_form == 'register' %} active{% endif %}" id="register-form" action="{% url 'login_register' %}">
+    <!-- Register Form -->
+    <form method="POST" class="register-form{% if active_form == 'register' %} active{% endif %}" id="register-form" action="{% url 'login_register' %}" style="{% if active_form == 'register' %}display: block; right: 0;{% else %}display: none;{% endif %}">
       {% csrf_token %}
       <div class="header-container">
         <button type="button" class="back-button" onclick="hideRegister()">
@@ -214,17 +227,17 @@
       </div>
       {% endif %}
 
-      <input type="text" name="username" class="register-input" placeholder="Username">
+      <input type="text" name="username" class="register-input" placeholder="Username" autocomplete="username">
       {% if field_errors.Username %}
         {% for err in field_errors.Username %}
-        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1 mb-2">⚠ {{ err }}</p>
         {% endfor %}
       {% endif %}
 
-      <input type="email" name="email" class="register-input" placeholder="Email">
+      <input type="email" name="email" class="register-input" placeholder="Email" required autocomplete="email">
       {% if field_errors.Email %}
         {% for err in field_errors.Email %}
-        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1 mb-2">⚠ {{ err }}</p>
         {% endfor %}
       {% endif %}
 
@@ -234,31 +247,31 @@
       </select>
       {% if field_errors.Role %}
         {% for err in field_errors.Role %}
-        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1 mb-2">⚠ {{ err }}</p>
         {% endfor %}
       {% endif %}
 
-      <input type="password" name="password1" class="register-input" placeholder="Password">
-      <p class="text-gray-400 text-xs mt-1 ml-1">
+      <input type="password" name="password1" class="register-input" placeholder="Password" required autocomplete="new-password">
+      <p class="text-gray-400 text-xs mt-1 ml-1 mb-2">
         Use 8+ characters with letters, numbers and symbols
       </p>
       {% if field_errors.Password %}
         {% for err in field_errors.Password %}
-        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1 mb-2">⚠ {{ err }}</p>
         {% endfor %}
       {% endif %}
 
-      <input type="password" name="password2" class="register-input" placeholder="Confirm Password">
+      <input type="password" name="password2" class="register-input" placeholder="Confirm Password" required autocomplete="new-password">
       {% if field_errors.Confirm_Password %}
         {% for err in field_errors.Confirm_Password %}
-        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1 mb-2">⚠ {{ err }}</p>
         {% endfor %}
       {% endif %}
 
-      <input type="text" name="company" class="register-input" placeholder="Company">
+      <input type="text" name="company" class="register-input" placeholder="Company" value="NTPL">
       {% if field_errors.Company %}
         {% for err in field_errors.Company %}
-        <p class="inline-error text-red-400 text-xs mt-1 ml-1">⚠ {{ err }}</p>
+        <p class="inline-error text-red-400 text-xs mt-1 ml-1 mb-2">⚠ {{ err }}</p>
         {% endfor %}
       {% endif %}
 
@@ -268,23 +281,61 @@
 
   <script>
     function showLogin() {
-      document.getElementById('login-form').classList.add('active');
-      document.querySelector('.login-tabs').style.display = 'none';
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const loginTabs = document.querySelector('.login-tabs');
+
+      // Completely deactivate and hide register form
+      registerForm.classList.remove('active');
+      registerForm.style.display = 'none';
+
+      // Hide tabs
+      if (loginTabs) loginTabs.style.display = 'none';
+
+      // Activate login form
+      loginForm.style.display = 'block';
+      setTimeout(() => {
+        loginForm.classList.add('active');
+      }, 10);
     }
 
     function hideLogin() {
-      document.getElementById('login-form').classList.remove('active');
-      document.querySelector('.login-tabs').style.display = 'flex';
+      const loginForm = document.getElementById('login-form');
+      const loginTabs = document.querySelector('.login-tabs');
+
+      loginForm.classList.remove('active');
+      loginForm.style.display = 'none';
+
+      if (loginTabs) loginTabs.style.display = 'flex';
     }
 
     function showRegister() {
-      document.getElementById('register-form').classList.add('active');
-      document.querySelector('.login-tabs').style.display = 'none';
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const loginTabs = document.querySelector('.login-tabs');
+
+      // Completely deactivate and hide login form
+      loginForm.classList.remove('active');
+      loginForm.style.display = 'none';
+
+      // Hide tabs
+      if (loginTabs) loginTabs.style.display = 'none';
+
+      // Activate register form
+      registerForm.style.display = 'block';
+      setTimeout(() => {
+        registerForm.classList.add('active');
+      }, 10);
     }
 
     function hideRegister() {
-      document.getElementById('register-form').classList.remove('active');
-      document.querySelector('.login-tabs').style.display = 'flex';
+      const registerForm = document.getElementById('register-form');
+      const loginTabs = document.querySelector('.login-tabs');
+
+      registerForm.classList.remove('active');
+      registerForm.style.display = 'none';
+
+      if (loginTabs) loginTabs.style.display = 'flex';
     }
 
     // On page load, check active_form from Django context
@@ -294,6 +345,14 @@
         showRegister();
       } else if (activeForm === 'login') {
         showLogin();
+      } else {
+        // Ensure both forms start closed and tabs visible
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const loginTabs = document.querySelector('.login-tabs');
+        if (loginForm) loginForm.style.display = 'none';
+        if (registerForm) registerForm.style.display = 'none';
+        if (loginTabs) loginTabs.style.display = 'flex';
       }
 
       // Auto-scroll to error on page load if errors exist
