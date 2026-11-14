@@ -386,7 +386,7 @@
                     {% elif is_superuser %}
                         <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You're logged in as an Admin:</p> {{ user.username }}
                     {% else %}
-                        <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">You are unemployed</p> {{user.username}}
+                        <p style="font-size: 16px; padding-right: 5px; font-weight: bold;">Your account is waiting for role assignment. Please contact your administrator.</p> ({{ user.username }})
                     {% endif %}
                 </p>
                 <div class="logout-option">

@@ -353,30 +353,6 @@
         }
         return true;
     }
-    document.addEventListener('DOMContentLoaded', () => {
-      let selectedStatus = "Pending"; // Default selected status
-
-      function setStatus(status) {
-        selectedStatus = status; // Update selected status
-        updateStatusLabels(); // Update the visual state of the labels
-        toggleOvertimeReason(); // Toggle the overtime reason based on the selected status
-      }
-
-      function updateStatusLabels() {
-        const statusLabels = document.querySelectorAll('.status-label');
-
-        statusLabels.forEach(label => {
-          label.classList.remove('selected'); // Remove selected class from all labels
-        });
-
-        // Add selected class to the corresponding label based on the selected status
-        const selectedLabel = Array.from(statusLabels).find(label => label.textContent === selectedStatus);
-        if (selectedLabel) {
-          selectedLabel.classList.add('selected');
-        }
-      }
-
-    });
   </script>
 </body>
 </html>
