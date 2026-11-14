@@ -274,26 +274,20 @@
       <i class="fas fa-angle-double-left"></i>
       <span>Collapse</span>
     </button>
-    <a href="{% url 'dashboard' %}" class="sidebar-link">
-      <button class="sidebar-btn">
-        <i class="fas fa-home"></i>
-        <span>Home</span>
-      </button>
+    <a href="{% url 'dashboard' %}" class="sidebar-btn sidebar-link">
+      <i class="fas fa-home"></i>
+      <span>Home</span>
     </a>
     {% if employee.coordinator or user.is_superuser %}
-    <a href="{% url 'employee_list' %}" class="sidebar-link">
-      <button class="sidebar-btn">
-        <i class="fas fa-users"></i>
-        <span><p style="margin-left: 25px;">Employee</p> <p>Management</p></span>
-      </button>
+    <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link">
+      <i class="fas fa-users"></i>
+      <span><p style="margin-left: 25px;">Employee</p> <p>Management</p></span>
     </a>
     {% endif %}
     {% if employee.coordinator or user.is_superuser %}
-    <a href="{% url 'summary_report' %}" class="sidebar-link">
-      <button class="sidebar-btn">
-        <i class="fas fa-chart-line"></i>
-        <span>Summary<br>Report</span>
-      </button>
+    <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
+      <i class="fas fa-chart-line"></i>
+      <span>Summary<br>Report</span>
     </a>
     {% endif %}
     <div class="version-text">MITR v2.0.1</div>

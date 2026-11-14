@@ -443,20 +443,11 @@ def employee_list_view(request):
 
  
 @admin_required
-def remove_employee_view(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
-    if request.method == 'POST':
-        employee.delete()
-        messages.success(request, 'Employee removed successfully.')
-        return redirect('employee_list')
-    return render(request, 'confirm_remove_employee.html', {'employee': employee})
-
- 
-@admin_required
 def confirm_remove_employee(request, id):
     employee = get_object_or_404(Employee, id=id)
     if request.method == 'POST':
         employee.delete()
+        messages.success(request, 'Employee removed successfully.')
         return redirect('employee_list')  # Redirect to the dashboard after deletion
 
     return render(request, 'confirm_remove_employee.html', {'employee': employee})
@@ -555,16 +546,21 @@ def employee_progress(request, employee_id):
     return render(request, 'employee_progress.html', context)
 
  
-def generate_summary(date):
-    start_date = datetime.datetime.combine(date, datetime.time.min)
-    end_date = datetime.datetime.combine(date, datetime.time.max)
+def generate_summary(summary_date):
+    if isinstance(summary_date, str):
+        summary_date = datetime.strptime(summary_date, '%Y-%m-%d').date()
+    elif isinstance(summary_date, datetime):
+        summary_date = summary_date.date()
 
-    created_tasks = Task.objects.filter(created_at__range=(start_date, end_date))
-    completed_tasks = Task.objects.filter(completed_at__range=(start_date, end_date))
-    overdue_tasks = Task.objects.filter(submission_date__lt=date, completed=False)
+    start_date = timezone.make_aware(datetime.combine(summary_date, datetime.min.time())) if timezone.is_aware(timezone.now()) else datetime.combine(summary_date, datetime.min.time())
+    end_date = timezone.make_aware(datetime.combine(summary_date, datetime.max.time())) if timezone.is_aware(timezone.now()) else datetime.combine(summary_date, datetime.max.time())
+
+    created_tasks = Task.objects.filter(date_added__range=(start_date, end_date))
+    completed_tasks = Task.objects.filter(completed=True, completed_date__range=(start_date, end_date))
+    overdue_tasks = Task.objects.filter(submission_date__lt=summary_date, completed=False)
 
     summary = {
-        'date': date,
+        'date': summary_date,
         'created_tasks': created_tasks,
         'completed_tasks': completed_tasks,
         'overdue_tasks': overdue_tasks,
