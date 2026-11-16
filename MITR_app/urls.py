@@ -15,6 +15,7 @@ urlpatterns = [
     path('confirm-remove-employee/<int:id>/', views.confirm_remove_employee, name='confirm_remove_employee'),
     path('employee/<int:employee_id>/progress/', views.employee_progress, name='employee_progress'),
     path('summary_report/', views.summary_report, name='summary_report'),
+    path('download_summary_report/', views.download_summary_report, name='download_summary_report'),
     path('download_summary_report/<date>/<report_type>/<status_filter>/', views.download_summary_report, name='download_summary_report'),
     path('update-coordinator/<int:employee_id>/', views.update_coordinator, name='update_coordinator'),
     path('subscriptions/', views.subscriptions, name='subscriptions'),

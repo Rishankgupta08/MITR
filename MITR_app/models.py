@@ -4,8 +4,6 @@ from django.conf import settings
 from datetime import timedelta, datetime
 from django.core.mail import send_mail
 from django.utils import timezone
-from django_q.tasks import async_task
-from .tasks import send_reminder_email
 import logging
 import subprocess
 
@@ -59,7 +57,7 @@ class Task(models.Model):
     email = models.EmailField()
     employee = models.ForeignKey('Employee', on_delete=models.CASCADE, null=True, blank=True)
     remind_every = models.DurationField()
-    submission_date = models.DateField(default=datetime.now())
+    submission_date = models.DateField(default=timezone.now)
     date_added = models.DateTimeField(default=timezone.now)
     completed = models.BooleanField(default=False)
     client_company = models.CharField(max_length=100,null=True)
@@ -75,16 +73,15 @@ class Task(models.Model):
     last_overdue_reminder = models.DateTimeField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
-        if not self.next_reminder_date:
-            self.next_reminder_date = timezone.now() + self.remind_every
+        if self._state.adding:
+            # First reminder is due one interval after creation
+            # (the initial "new task" email is sent separately).
+            self.next_reminder_date = (self.date_added or timezone.now()) + self.remind_every
         if self.completed and not self.completed_date:
             self.completed_date = timezone.now()
-        
-        super().save(*args, **kwargs)
 
-        # Schedule reminder emails
-        if not self.completed:
-            self.schedule_reminder_emails()
+        super().save(*args, **kwargs)
+        # No scheduling here: scan_and_send_reminders() handles all reminders.
 
     def complete_task(self, user):
         self.completed = True
@@ -110,10 +107,6 @@ class Task(models.Model):
             [self.employee.email],
             fail_silently=False,
         )
-
-    def schedule_reminder_emails(self):
-        if not self.completed:
-            async_task(send_reminder_email, self.id)
 
 class Employee(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
@@ -147,6 +140,11 @@ class Subscription(models.Model):
     customer_phone = models.CharField(max_length=15)
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField()
+    company = models.CharField(
+        max_length=100,
+        default='',
+        db_index=True,  # faster filtering
+    )
     reminder_sent = models.BooleanField(default=False)
     end_notification_sent = models.BooleanField(default=False)
     

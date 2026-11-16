@@ -1,6 +1,4 @@
 django
-matplotlib
-pandas
 pytz
 xlsxwriter
 whitenoise

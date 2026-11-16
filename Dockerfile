@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create required directories
-RUN mkdir -p staticfiles media/progress logs
+RUN mkdir -p staticfiles media logs
 
 # Set ownership
 RUN chown -R mitr:mitr /app

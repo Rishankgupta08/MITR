@@ -1,6 +1,4 @@
 # Create your views here.
-import matplotlib
-matplotlib.use('Agg')
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, get_backends
 from django.contrib.auth.decorators import login_required
@@ -15,9 +13,7 @@ from django.contrib.auth import get_user_model
 from datetime import date, datetime, timedelta
 from django.http import HttpResponse
 from django.utils.timezone import now
-import matplotlib.pyplot as plt
 import os
-import pandas as pd
 import xlsxwriter
 from django.utils import timezone
 from django.db.models import F
@@ -453,96 +449,33 @@ def confirm_remove_employee(request, id):
     return render(request, 'confirm_remove_employee.html', {'employee': employee})
 
  
-def collect_employee_data(employee_id):
-    employee = Employee.objects.get(id=employee_id)
-    total_tasks = Task.objects.filter(employee=employee).count()
-    completed_tasks = Task.objects.filter(employee=employee, completed=True).count()
-    overdue_tasks = Task.objects.filter(employee=employee, completed=False, submission_date__lt=datetime.now().date()).count()
-    pending_tasks = Task.objects.filter(employee=employee, completed=False, submission_date__gt=datetime.now().date()).count()
-
-    data = {
-        'total_tasks': total_tasks,
-        'completed_tasks': completed_tasks,
-        'overdue_tasks': overdue_tasks,
-        'pending_tasks' : pending_tasks
-    }
-
-    return employee.name, data
-
-def plot_employee_progress(employee_id):
-    employee_name, data = collect_employee_data(employee_id)
-    colors = ['grey', 'green', 'red', 'blue']
-    df = pd.DataFrame([data], index=[employee_name])
-    df.plot(kind='bar', figsize=(10, 6), color=colors)
-
-    plt.title(f'{employee_name} Task Progress')
-    plt.xlabel('Tasks')
-    plt.ylabel('Number of Tasks')
-    plt.xticks(rotation=0)
-    plt.legend(['Total Tasks', 'Completed Tasks', 'Overdue Tasks', 'Pending Tasks'])
-    plt.tight_layout()
-
-    # ✅ save inside MEDIA_ROOT
-    image_filename = f'progress_graph_employee-{employee_id}.png'
-    image_dir = os.path.join(settings.MEDIA_ROOT, 'progress')
-    os.makedirs(image_dir, exist_ok=True)
-
-    image_path = os.path.join(image_dir, image_filename)
-    plt.savefig(image_path)
-    plt.close()
-
-    # ✅ return MEDIA_URL
-    return settings.MEDIA_URL + f'progress/{image_filename}'
- 
 @coordinator_or_admin_required
 def employee_progress(request, employee_id):
-    user_email = request.user
-    is_superuser = user_email.is_superuser
-    
-    # Default values
-    current_employee = None
+    from datetime import date
 
-    # Try to fetch the employee object if the user is not a superuser
-    if not is_superuser:
-        try:
-            current_employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
-            # Redirect regular employees to dashboard
-            if not current_employee.coordinator:
-                return redirect('dashboard')
-        except Employee.DoesNotExist:
-            current_employee = None
-            print(f"No employee record found for user: {user_email}")
+    # Tenant isolation: only employees of the requester's company
+    employee = get_object_or_404(Employee, id=employee_id, company=request.user.company)
+    today = date.today()
 
-    employee = get_object_or_404(Employee, id=employee_id)
-    tasks = Task.objects.filter(employee=employee)
-    total_tasks = tasks.count()
-    completed_tasks = tasks.filter(completed=True).count()
-    pending_tasks = tasks.filter(completed=False).count()
-    overdue_tasks = Task.objects.filter(employee=employee, completed=False, submission_date__lt=datetime.now().date()).count()
-    progress_graph_url = None
-    try:
-        progress_graph_url = plot_employee_progress(employee_id)
-        chart_generated = True
-    except Exception as e:
-        logger.warning(f"Chart generation failed: {e}")
-        chart_generated = False
-    today = datetime.today().date()
-    is_superuser = request.user.is_superuser
+    tasks = Task.objects.filter(employee=employee).order_by('-date_added')
+
+    # Simple DB counts - no matplotlib needed
+    total = tasks.count()
+    completed = tasks.filter(completed=True).count()
+    overdue = tasks.filter(completed=False, submission_date__lt=today).count()
+    pending = tasks.filter(completed=False, submission_date__gte=today).count()
+
     context = {
-        'is_superuser': is_superuser,
         'employee': employee,
-        'coordinator': employee.coordinator,
-        'total_tasks': total_tasks,
-        'completed_tasks': completed_tasks,
-        'pending_tasks': pending_tasks,
         'tasks': tasks,
-        'progress_graph_url': progress_graph_url,
-        'chart_url': progress_graph_url,
-        'chart_generated': chart_generated,
         'today': today,
-        'overdue_tasks' : overdue_tasks,
+        'total': total,
+        'completed': completed,
+        'overdue': overdue,
+        'pending': pending,
+        'is_superuser': request.user.is_superuser,
+        'coordinator': employee.coordinator,
     }
-
     return render(request, 'employee_progress.html', context)
 
  
@@ -568,93 +501,78 @@ def generate_summary(summary_date):
 
     return summary
 
-@coordinator_or_admin_required
-def summary_report(request):
-     user_email = request.user
-     is_superuser = user_email.is_superuser
-     company = user_email.company
-     # Default values
-     employee = None
-     is_employee = False
- 
-     # Try to fetch the employee object if the user is not a superuser
-     if not is_superuser:
-         try:
-             employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
-             is_employee = True
-             # Redirect regular employees to dashboard
-             if not employee.coordinator:
-                 return redirect('dashboard')
-         except Employee.DoesNotExist:
-             employee = None
-             print(f"No employee record found for user: {user_email}")
- 
-     selected_date_str = request.GET.get('date', datetime.now().strftime('%Y-%m-%d'))
-     report_type = request.GET.get('report_type', 'daily')
-     status_filter = request.GET.get('status_filter', 'all')
- 
-     selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
- 
-     if report_type == 'weekly':
-         start_date = selected_date - timedelta(days=selected_date.weekday())
-         end_date = start_date + timedelta(days=6)
-     elif report_type == 'monthly':
-         start_date = selected_date.replace(day=1)
-         end_date = (start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-     else:  # Daily
-         start_date = selected_date
-         end_date = selected_date
- 
-     tasks_created = set(Task.objects.filter(date_added__date__range=[start_date, end_date],employee__company=company).order_by('-date_added'))
-     tasks_completed = set(Task.objects.filter(completed=True, completed_date__isnull=False,employee__company=company).order_by('-date_added'))
-     tasks_overdue = set(Task.objects.filter(submission_date__lt=selected_date, completed=False,employee__company=company).order_by('-date_added'))
- 
-     all_tasks = tasks_created | tasks_completed | tasks_overdue
-     user_email = request.user
-     is_superuser = user_email.is_superuser
-     
-     # Default values
-     employee = None
-     is_employee = False
- 
-     # Try to fetch the employee object if the user is not a superuser
-     if not is_superuser:
-         try:
-             employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
-             is_employee = True
-         except Employee.DoesNotExist:
-             # Handle the case where the user is not linked to an employee
-             employee = None
-             print(f"No employee record found for user: {user_email}")
-     # Apply the status filter
-     if status_filter != 'all':
-         if status_filter == 'completed':
-             all_tasks = {task for task in all_tasks if task.completed and task.completed_date.date() <= task.submission_date}
-         elif status_filter == 'pending':
-             all_tasks = {task for task in all_tasks if not task.completed and task.submission_date >= selected_date}
-         elif status_filter == 'overdue':
-             all_tasks = {task for task in all_tasks if not task.completed and task.submission_date < selected_date}
-         elif status_filter == 'completed_overdue':
-             all_tasks = {task for task in all_tasks if task.completed and task.completed_date.date() > task.submission_date}
- 
-     return render(request, 'summary_report.html', {
-         'all_tasks': all_tasks,
-         'selected_date': selected_date,
-         'report_type': report_type,
-         'status_filter': status_filter,
-         'is_employee': is_employee,
-         'is_superuser': is_superuser,
-         'employee': employee
-     })
-def remove_timezone_from_datetime(dt):
-    """Remove timezone information from a datetime object."""
-    if dt is not None:
-        return dt.replace(tzinfo=None)
-    return dt
+def get_filtered_tasks(company, start_date=None,
+                       end_date=None, status_filter=None):
+    """
+    Single source of truth for report queries.
+    Always filters by company at DB level.
+    """
+    from django.db.models import Q
+    from datetime import date
+
+    # Base query — always scoped to company
+    queryset = Task.objects.filter(
+        employee__company=company
+    )
+
+    # Date range filter
+    if start_date:
+        queryset = queryset.filter(
+            Q(date_added__date__gte=start_date) |
+            Q(completed_date__date__gte=start_date)
+        )
+    if end_date:
+        queryset = queryset.filter(
+            Q(date_added__date__lte=end_date) |
+            Q(submission_date__lte=end_date)
+        )
+
+    # Status filter at DB level (not Python)
+    today = date.today()
+    if status_filter == 'completed':
+        queryset = queryset.filter(completed=True)
+    elif status_filter == 'pending':
+        queryset = queryset.filter(
+            completed=False,
+            submission_date__gte=today
+        )
+    elif status_filter == 'overdue':
+        queryset = queryset.filter(
+            completed=False,
+            submission_date__lt=today
+        )
+    elif status_filter == 'completed_overdue':
+        queryset = queryset.filter(
+            completed=True,
+            completed_date__date__gt=F('submission_date')
+        )
+
+    # Always ordered — never random
+    return queryset.order_by('-date_added').distinct()
 
 @coordinator_or_admin_required
-def download_summary_report(request, date, report_type, status_filter):
-    selected_date = datetime.strptime(date, '%Y-%m-%d').date()
+def summary_report(request):
+    user_email = request.user
+    is_superuser = user_email.is_superuser
+    company = user_email.company
+    employee = None
+    is_employee = False
+
+    if not is_superuser:
+        try:
+            employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
+            is_employee = True
+            if not employee.coordinator:
+                return redirect('dashboard')
+        except Employee.DoesNotExist:
+            employee = None
+            print(f"No employee record found for user: {user_email}")
+
+    selected_date_str = request.GET.get('date', datetime.now().strftime('%Y-%m-%d'))
+    report_type = request.GET.get('report_type') or request.GET.get('filter', 'daily')
+    status_filter = request.GET.get('status_filter') or request.GET.get('status', 'all')
+
+    selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
 
     if report_type == 'weekly':
         start_date = selected_date - timedelta(days=selected_date.weekday())
@@ -666,27 +584,54 @@ def download_summary_report(request, date, report_type, status_filter):
         start_date = selected_date
         end_date = selected_date
 
-    # Ensure tasks_created and tasks_completed are filtered correctly
-    tasks_created = Task.objects.filter(date_added__date__range=[start_date, end_date])
-    tasks_completed = Task.objects.filter(completed=True, completed_date__isnull=False)
-    tasks_overdue = Task.objects.filter(submission_date__lt=selected_date, completed=False)
+    tasks = get_filtered_tasks(
+        company=company,
+        start_date=start_date,
+        end_date=end_date,
+        status_filter=status_filter,
+    )
 
-    all_tasks = tasks_created | tasks_completed | tasks_overdue
+    return render(request, 'summary_report.html', {
+        'tasks': tasks,
+        'all_tasks': tasks,
+        'selected_date': selected_date,
+        'report_type': report_type,
+        'status_filter': status_filter,
+        'is_employee': is_employee,
+        'is_superuser': is_superuser,
+        'employee': employee
+    })
 
-    # Apply the status filter
-    if status_filter != 'all':
-        if status_filter == 'completed':
-            all_tasks = all_tasks.filter(completed=True, completed_date__lte=F('submission_date'))
-        elif status_filter == 'pending':
-            all_tasks = all_tasks.filter(completed=False, submission_date__gte=selected_date)
-        elif status_filter == 'overdue':
-            all_tasks = all_tasks.filter(completed=False, submission_date__lt=selected_date)
-        elif status_filter == 'completed_overdue':
-            all_tasks = all_tasks.filter(completed=True, completed_date__gt=F('submission_date'))
+def remove_timezone_from_datetime(dt):
+    """Remove timezone information from a datetime object."""
+    if dt is not None:
+        return dt.replace(tzinfo=None)
+    return dt
+
+@login_required
+@coordinator_or_admin_required
+def download_summary_report(request, date=None, report_type='daily', status_filter='all'):
+    company = request.user.company
+    date_str = date or request.GET.get('date') or datetime.now().strftime('%Y-%m-%d')
+    report_type = request.GET.get('report_type') or request.GET.get('filter') or report_type
+    status_filter = request.GET.get('status_filter') or request.GET.get('status') or status_filter
+    selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+    if report_type == 'weekly':
+        start_date = selected_date - timedelta(days=selected_date.weekday())
+        end_date = start_date + timedelta(days=6)
+    elif report_type == 'monthly':
+        start_date = selected_date.replace(day=1)
+        end_date = (start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    else:  # Daily
+        start_date = selected_date
+        end_date = selected_date
+
+    tasks = get_filtered_tasks(company, start_date, end_date, status_filter)
 
     # Create an in-memory output file for the new workbook.
     output = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    output['Content-Disposition'] = f'attachment; filename="summary_report_{date}_{report_type}_{status_filter}.xlsx"'
+    output['Content-Disposition'] = f'attachment; filename="summary_report_{date_str}_{report_type}_{status_filter}.xlsx"'
 
     # Create an Excel workbook and worksheet
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
@@ -703,7 +648,7 @@ def download_summary_report(request, date, report_type, status_filter):
         worksheet.write(0, col_num, column_title)
 
     # Write the data
-    for row_num, task in enumerate(all_tasks, start=1):
+    for row_num, task in enumerate(tasks, start=1):
         status = 'Pending'
         if task.completed:
             if task.completed_date and task.completed_date.date() and task.completed_date.date() > task.submission_date:
@@ -752,8 +697,15 @@ def subscriptions(request):
             employee = None
             print(f"No employee record found for user: {user_email}")
 
-    # Get all subscriptions ordered by start date
-    subscriptions_list = Subscription.objects.all().order_by('-start_date')
+    company = request.user.company
+    if request.user.is_superuser:
+        # Admin sees all
+        subscriptions_list = Subscription.objects.all().order_by('-start_date')
+    else:
+        # Coordinator/Employee sees only their company
+        subscriptions_list = Subscription.objects.filter(
+            company=company
+        ).order_by('-start_date')
     
     # Pagination
     paginator = Paginator(subscriptions_list, 10)  # Show 10 subscriptions per page
@@ -806,10 +758,13 @@ def add_subscription(request):
     # Check if user is superuser first
     if request.user.is_superuser:
         if request.method == 'POST':
-            # Convert end_date string to datetime and set it to end of day
-            end_date = datetime.strptime(request.POST['end_date'], '%Y-%m-%d')
-            end_date = end_date.replace(hour=23, minute=59, second=59)
-            end_date = timezone.make_aware(end_date)
+            # Convert end_date string (YYYY-MM-DD or ISO YYYY-MM-DDTHH:MM) to aware datetime
+            raw_end_date = request.POST['end_date']
+            end_date = datetime.fromisoformat(raw_end_date)
+            if 'T' not in raw_end_date and ' ' not in raw_end_date:
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+            if timezone.is_naive(end_date):
+                end_date = timezone.make_aware(end_date)
             
             subscription = Subscription.objects.create(
                 subscription_type=request.POST['subscription_type'],
@@ -819,6 +774,7 @@ def add_subscription(request):
                 customer_email=request.POST['customer_email'],
                 customer_phone=request.POST['customer_phone'],
                 end_date=end_date,
+                company=request.user.company,
             )
             async_task(send_subscription_confirmation_email, subscription.id)
             return redirect('subscriptions')
@@ -831,10 +787,13 @@ def add_subscription(request):
             return redirect('dashboard')
             
         if request.method == 'POST':
-            # Convert end_date string to datetime and set it to end of day
-            end_date = datetime.strptime(request.POST['end_date'], '%Y-%m-%d')
-            end_date = end_date.replace(hour=23, minute=59, second=59)
-            end_date = timezone.make_aware(end_date)
+            # Convert end_date string (YYYY-MM-DD or ISO YYYY-MM-DDTHH:MM) to aware datetime
+            raw_end_date = request.POST['end_date']
+            end_date = datetime.fromisoformat(raw_end_date)
+            if 'T' not in raw_end_date and ' ' not in raw_end_date:
+                end_date = end_date.replace(hour=23, minute=59, second=59)
+            if timezone.is_naive(end_date):
+                end_date = timezone.make_aware(end_date)
             
             subscription = Subscription.objects.create(
                 subscription_type=request.POST['subscription_type'],
@@ -844,6 +803,7 @@ def add_subscription(request):
                 customer_email=request.POST['customer_email'],
                 customer_phone=request.POST['customer_phone'],
                 end_date=end_date,
+                company=request.user.company,
             )
             async_task(send_subscription_confirmation_email, subscription.id)
             return redirect('subscriptions')

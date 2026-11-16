@@ -1,5 +1,4 @@
-from django_q.tasks import async_task, schedule
-from django_q.models import Schedule
+from django_q.tasks import async_task
 from django.core.mail import send_mail
 from datetime import date, timedelta
 import logging
@@ -47,148 +46,87 @@ Web: www.nescubeonline.com Support Partner:  www.nestechindia.com
     except Exception as e:
         logger.error(f"Error sending initial email for task {task_id}: {e}")
 
-def send_reminder_email(task_id=None):
+def scan_and_send_reminders():
+    """
+    Single scanner - runs every 30 min via django-q2 schedule.
+    Checks all incomplete tasks and sends reminders if due.
+    Atomic update prevents duplicate sends.
+    """
+    from django.db import models, transaction
+    from django.conf import settings
     from .models import Task
 
-    if task_id is None:
-        logger.error("Reminder Email not sent: task_id is None")
+    now = timezone.now()
+    today = date.today()
 
-    try:
-        task = Task.objects.get(id=task_id)
-        current_time = timezone.now()
+    # --- Regular reminders -------------------------------------------------
+    # Tasks the employee already marked as completed (awaiting verification)
+    # are skipped, same as the old per-task reminder logic.
+    due_tasks = Task.objects.filter(
+        completed=False,
+        employee_marked_completed=False,
+        employee__isnull=False,
+        next_reminder_date__lte=now,
+    ).select_related('employee')
 
-        # Skip if the task is already completed
-        if task.employee_marked_completed:
-            logger.info(f"Task {task_id} is already completed, skipping reminder")
-            return
+    for task in due_tasks:
+        with transaction.atomic():
+            # Atomic claim - prevents duplicate sends
+            updated = Task.objects.filter(
+                id=task.id,
+                next_reminder_date=task.next_reminder_date,
+            ).update(next_reminder_date=now + task.remind_every)
+            if updated == 1:
+                try:
+                    send_mail(
+                        subject=f'Task Reminder: {task.title}',
+                        message=f'''
+Dear {task.employee.name},
 
-        # Pending tasks
-        if current_time >= task.next_reminder_date:
-            # Check if enough time has passed since the last reminder
-            if current_time < task.next_reminder_date + timedelta(minutes=5):
-                logger.info(f"Skipping duplicate reminder for task {task_id}")
-                return
+This is a reminder for task: {task.title}
+Deadline: {task.submission_date}
+Description: {task.description}
 
-            send_mail(
-                f"Reminder: {task.title}",
-                f"""
-Dear {task.employee},
+Please complete this task at your earliest convenience.
+                        ''',
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[task.employee.email],
+                        fail_silently=True,
+                    )
+                    logger.info(f'Reminder sent for task {task.id}')
+                except Exception as e:
+                    logger.error(f'Reminder failed for task {task.id}: {e}')
 
-Just a reminder about the task assigned to you.
+    # --- Overdue reminders (12 hour throttle) -----------------------------
+    twelve_hours_ago = now - timedelta(hours=12)
+    throttle = (
+        models.Q(last_overdue_reminder__isnull=True) |
+        models.Q(last_overdue_reminder__lt=twelve_hours_ago)
+    )
+    overdue_tasks = Task.objects.filter(
+        completed=False,
+        employee_marked_completed=False,
+        employee__isnull=False,
+        submission_date__lt=today,
+    ).filter(throttle).select_related('employee')
 
-Task Name: {task.title}
-Task Description: {task.description}
-Client Name: {task.client_company}
-Client Email: {task.email}
-
-Please make sure to complete it before the due date {task.submission_date}.
-
-Thank you 
-
-Regards,
-Nescube Technology Private Limited
-SD-135, Jaipuria Sunrise Plaza Indirapuram,Ghaziabad -201014 U.P. India
-M:+91-9213093891 | +91-9213093892 | +91-120-4286333
-Web: www.nescubeonline.com Support Partner:  www.nestechindia.com 
-                """,
-                'mitr.taskreminder@gmail.com',
-                [task.employee.email],
-                fail_silently=False,
+    for task in overdue_tasks:
+        with transaction.atomic():
+            updated = Task.objects.filter(id=task.id).filter(throttle).update(
+                last_overdue_reminder=now
             )
-            logger.info(f"Reminder email sent for task {task_id}")
-
-            # Update next reminder date before scheduling
-            task.next_reminder_date = current_time + task.remind_every
-            task.save()
-
-            # Schedule the next reminder
-            if not task.completed:
-                schedule_name = f'reminder_task_{task_id}'
-                Schedule.objects.filter(name=schedule_name).delete()
-                schedule(
-                    'MITR_app.tasks.send_reminder_email',
-                    task_id,
-                    schedule_type=Schedule.ONCE,
-                    next_run=timezone.now() + task.remind_every,
-                    name=schedule_name,
-                )
-
-        # Overdue tasks
-        elif current_time.date() >= task.submission_date:
-            # Check if an overdue reminder was sent in the last 12 hours
-            if hasattr(task, 'last_overdue_reminder') and task.last_overdue_reminder:
-                if current_time < task.last_overdue_reminder + timedelta(hours=11):  # Buffer of 1 hour
-                    logger.info(f"Skipping duplicate overdue reminder for task {task_id}")
-                    return
-
-            send_mail(
-                f"Overdue Task Reminder: {task.title}",
-                f"""
-Dear {task.employee},
-
-The task assigned to you is overdue.
-
-Task Name: {task.title}
-Task Description: {task.description}
-Client Name: {task.client_company}
-Client Email: {task.email}
-
-Please complete it as soon as possible.
-
-Thank you 
-
-Regards,
-Nescube Technology Private Limited
-SD-135, Jaipuria Sunrise Plaza Indirapuram,Ghaziabad -201014 U.P. India
-M:+91-9213093891 | +91-9213093892 | +91-120-4286333
-Web: www.nescubeonline.com Support Partner:  www.nestechindia.com 
-                """,
-                'mitr.taskreminder@gmail.com',
-                [task.employee.email],
-                fail_silently=False,
-            )
-            logger.info(f"Overdue reminder email sent for task {task_id}")
-
-            # Update last overdue reminder timestamp
-            task.last_overdue_reminder = current_time
-            task.save()
-
-            # Schedule the next overdue reminder
-            if not task.completed:
-                schedule_name = f'reminder_task_{task_id}'
-                Schedule.objects.filter(name=schedule_name).delete()
-                schedule(
-                    'MITR_app.tasks.send_reminder_email',
-                    task_id,
-                    schedule_type=Schedule.ONCE,
-                    next_run=timezone.now() + timedelta(hours=12),
-                    name=schedule_name,
-                )
-
-    except Task.DoesNotExist:
-        logger.error(f"Task {task_id} does not exist")
-    except Exception as e:
-        logger.error(f"Error sending reminder email for task {task_id}: {e}")
-
-
-def check_overdue_tasks(task_id=None):
-    from .models import Task
-
-    try:
-        today = date.today()
-        overdue_tasks = Task.objects.filter(
-            completed=False,
-            submission_date__lt=date.today()
-        )
-
-        for task in overdue_tasks:
-            overdue_since = today - task.submission_date
-            if overdue_since.days <= 30:
-                async_task(send_reminder_email, task.id)
-        
-        logger.info("Checked for overdue tasks and scheduled reminders")
-    except Exception as e:
-        logger.error(f"Error checking overdue tasks: {e}")
+            if updated == 1:
+                try:
+                    send_mail(
+                        subject=f'OVERDUE: {task.title}',
+                        message=f'Task {task.title} is overdue. Deadline was {task.submission_date}.',
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[task.employee.email],
+                        fail_silently=True,
+                    )
+                    logger.info(f'Overdue reminder sent for task {task.id}')
+                except Exception as e:
+                    logger.error(f'Overdue reminder failed for task {task.id}: {e}')
 
 
 def send_subscription_confirmation_email(subscription_id,email=None):

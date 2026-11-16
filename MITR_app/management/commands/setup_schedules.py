@@ -16,10 +16,10 @@ class Command(BaseCommand):
 
         schedules = [
             {
-                'name': 'check_overdue_tasks',
-                'func': 'MITR_app.tasks.check_overdue_tasks',
+                'name': 'scan_and_send_reminders',
+                'func': 'MITR_app.tasks.scan_and_send_reminders',
                 'schedule_type': Schedule.MINUTES,
-                'minutes': 720,
+                'minutes': 30,
                 'repeats': -1,
                 'next_run': now,
             },
@@ -44,16 +44,16 @@ class Command(BaseCommand):
         for spec in schedules:
             obj, created = Schedule.objects.update_or_create(
                 name=spec['name'],
-                defaults={
-                    'func': spec['func'],
-                    'schedule_type': spec['schedule_type'],
-                    'minutes': spec['minutes'],
-                    'repeats': spec['repeats'],
-                    'next_run': spec['next_run'],
-                },
+                defaults={k: v for k, v in spec.items() if k != 'name'},
             )
             action = 'Created' if created else 'Updated'
             self.stdout.write(
-                self.style.SUCCESS(f"{action} schedule '{obj.name}' ({obj.func})")
+                self.style.SUCCESS(f"{action} schedule: {obj.name}")
             )
 
+        # Remove obsolete schedules (per-task self-chained reminders and the
+        # old overdue checker, now folded into scan_and_send_reminders).
+        deleted = Schedule.objects.filter(name__startswith='reminder_task_').delete()
+        self.stdout.write(f"Deleted {deleted[0]} old per-task schedules")
+        deleted = Schedule.objects.filter(name='check_overdue_tasks').delete()
+        self.stdout.write(f"Deleted {deleted[0]} obsolete check_overdue_tasks schedule")

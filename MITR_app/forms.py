@@ -1,7 +1,7 @@
 from django import forms
 from django.forms import ValidationError
 from datetime import date, timedelta
-from .models import CustomUser, Employee, Task
+from .models import CustomUser, Employee, Task, Subscription
 import uuid
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
@@ -169,3 +169,9 @@ from django import forms
 
 class DateForm(forms.Form):
     date = forms.DateField(widget=forms.SelectDateWidget)
+
+class SubscriptionForm(forms.ModelForm):
+    class Meta:
+        model = Subscription
+        exclude = ['company', 'reminder_sent',
+                   'end_notification_sent']
