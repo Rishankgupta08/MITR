@@ -178,6 +178,37 @@ def logout_view(request):
     logout(request)
     return redirect('login_register')
 
+def get_available_companies(default_company='NTPL'):
+    companies = set()
+    if default_company:
+        companies.add(default_company)
+    for c in User.objects.exclude(company='').values_list('company', flat=True).distinct():
+        if c:
+            companies.add(c)
+    for c in Employee.objects.exclude(company='').exclude(company='TO_BE_ASSIGNED').values_list('company', flat=True).distinct():
+        if c:
+            companies.add(c)
+    for c in Subscription.objects.exclude(company='').values_list('company', flat=True).distinct():
+        if c:
+            companies.add(c)
+    return sorted(companies)
+
+
+def get_active_company(request):
+    user_company = getattr(request.user, 'company', '') or 'NTPL'
+    if not request.user.is_superuser:
+        return user_company, [user_company]
+    companies = get_available_companies(user_company)
+    req_company = request.GET.get('company')
+    if req_company and req_company in companies:
+        request.session['admin_selected_company'] = req_company
+        return req_company, companies
+    saved = request.session.get('admin_selected_company')
+    if saved and saved in companies:
+        return saved, companies
+    return user_company, companies
+
+
 @admin_required
 def update_coordinator(request, employee_id):
     if request.method == "POST":
@@ -216,7 +247,7 @@ def dashboard_view(request):
     from .tasks import send_initial_email
 
     user = request.user
-    company = user.company or 'NTPL'
+    company, available_companies = get_active_company(request)
 
     # Determine role
     is_admin = user.is_superuser
@@ -253,6 +284,8 @@ def dashboard_view(request):
 
     # HANDLE TASK FORM & EMPLOYEE FORM
     form = TaskForm(user=request.user)
+    if is_admin:
+        form.fields['employee'].queryset = Employee.objects.filter(company=company)
     form_has_errors = False
     employee_form = EmployeeForm()
 
@@ -298,6 +331,8 @@ def dashboard_view(request):
         'form': form,
         'form_has_errors': form_has_errors,
         'employee_form': employee_form,
+        'selected_company': company,
+        'available_companies': available_companies,
     }
     return render(request, 'dashboard.html', context)
      
@@ -340,6 +375,17 @@ def task_view(request, task_id):
     )
     is_coordinator = bool(is_admin or (employee and employee.coordinator))
     is_employee = bool(not is_admin and not is_coordinator)
+
+    # Strict tenant & role isolation on task details/actions
+    if not is_admin:
+        if is_coordinator:
+            if not task.employee or task.employee.company != user.company:
+                messages.error(request, 'Access denied. You cannot access another company\'s task.')
+                return redirect('dashboard')
+        else:
+            if not employee or task.employee_id != employee.id:
+                messages.error(request, 'Access denied. You can only view your own tasks.')
+                return redirect('dashboard')
 
     form = TaskForm(request.POST or None, instance=task)
 
@@ -414,28 +460,38 @@ def set_incomplete_view(request, task_id):
  
 @coordinator_or_admin_required
 def employee_list_view(request):
-    company = request.user.company
+    from django.db.models import Q
+    company, available_companies = get_active_company(request)
     user_email = request.user
     is_superuser = user_email.is_superuser
     
-    # Default values
     employee = None
     is_employee = False
 
-    # Try to fetch the employee object if the user is not a superuser
     if not is_superuser:
         try:
             employee = (Employee.objects.filter(user=request.user).first() or Employee.objects.get(email__iexact=request.user.email))
             is_employee = True
-            # Redirect regular employees to dashboard
             if not employee.coordinator:
                 return redirect('dashboard')
         except Employee.DoesNotExist:
             employee = None
-            print(f"No employee record found for user: {user_email}")
     
     employees = Employee.objects.filter(company=company)
-    return render(request, 'employee_list.html', {'employees': employees,'is_employee': is_employee,'is_superuser': is_superuser,'employee': employee})
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        employees = employees.filter(
+            Q(name__icontains=search_query) | Q(email__icontains=search_query)
+        )
+    return render(request, 'employee_list.html', {
+        'employees': employees,
+        'is_employee': is_employee,
+        'is_superuser': is_superuser,
+        'employee': employee,
+        'search_query': search_query,
+        'selected_company': company,
+        'available_companies': available_companies,
+    })
 
  
 @admin_required
@@ -453,8 +509,11 @@ def confirm_remove_employee(request, id):
 def employee_progress(request, employee_id):
     from datetime import date
 
-    # Tenant isolation: only employees of the requester's company
-    employee = get_object_or_404(Employee, id=employee_id, company=request.user.company)
+    # Tenant isolation: Coordinators can only view their own company's employees; Admin can view any company's employee
+    if request.user.is_superuser:
+        employee = get_object_or_404(Employee, id=employee_id)
+    else:
+        employee = get_object_or_404(Employee, id=employee_id, company=request.user.company)
     today = date.today()
 
     tasks = Task.objects.filter(employee=employee).order_by('-date_added')
@@ -554,7 +613,7 @@ def get_filtered_tasks(company, start_date=None,
 def summary_report(request):
     user_email = request.user
     is_superuser = user_email.is_superuser
-    company = user_email.company
+    company, available_companies = get_active_company(request)
     employee = None
     is_employee = False
 
@@ -568,7 +627,7 @@ def summary_report(request):
             employee = None
             print(f"No employee record found for user: {user_email}")
 
-    selected_date_str = request.GET.get('date', datetime.now().strftime('%Y-%m-%d'))
+    selected_date_str = request.GET.get('date') or datetime.now().strftime('%Y-%m-%d')
     report_type = request.GET.get('report_type') or request.GET.get('filter', 'daily')
     status_filter = request.GET.get('status_filter') or request.GET.get('status', 'all')
 
@@ -599,7 +658,9 @@ def summary_report(request):
         'status_filter': status_filter,
         'is_employee': is_employee,
         'is_superuser': is_superuser,
-        'employee': employee
+        'employee': employee,
+        'selected_company': company,
+        'available_companies': available_companies,
     })
 
 def remove_timezone_from_datetime(dt):
@@ -611,7 +672,7 @@ def remove_timezone_from_datetime(dt):
 @login_required
 @coordinator_or_admin_required
 def download_summary_report(request, date=None, report_type='daily', status_filter='all'):
-    company = request.user.company
+    company, _ = get_active_company(request)
     date_str = date or request.GET.get('date') or datetime.now().strftime('%Y-%m-%d')
     report_type = request.GET.get('report_type') or request.GET.get('filter') or report_type
     status_filter = request.GET.get('status_filter') or request.GET.get('status') or status_filter
@@ -697,15 +758,20 @@ def subscriptions(request):
             employee = None
             print(f"No employee record found for user: {user_email}")
 
-    company = request.user.company
-    if request.user.is_superuser:
-        # Admin sees all
-        subscriptions_list = Subscription.objects.all().order_by('-start_date')
-    else:
-        # Coordinator/Employee sees only their company
-        subscriptions_list = Subscription.objects.filter(
-            company=company
-        ).order_by('-start_date')
+    from django.db.models import Q
+    company, available_companies = get_active_company(request)
+    subscriptions_list = Subscription.objects.filter(
+        company=company
+    ).order_by('-start_date')
+
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        subscriptions_list = subscriptions_list.filter(
+            Q(customer_name__icontains=search_query) |
+            Q(subscription_type__icontains=search_query) |
+            Q(customer_email__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
     
     # Pagination
     paginator = Paginator(subscriptions_list, 10)  # Show 10 subscriptions per page
@@ -719,7 +785,10 @@ def subscriptions(request):
             'now': current_time,
             'is_employee': is_employee,
             'is_superuser': is_superuser,
-            'employee': employee
+            'employee': employee,
+            'search_query': search_query,
+            'selected_company': company,
+            'available_companies': available_companies,
         }
         return render(request, 'subscriptions.html', context)
     
@@ -736,6 +805,8 @@ def subscriptions(request):
             'now': current_time,
             'is_employee': is_employee,
             'is_superuser': is_superuser,
+            'search_query': search_query,
+            'selected_company': company,
         }
         return render(request, 'subscriptions.html', context)
     except Employee.DoesNotExist:
@@ -774,7 +845,7 @@ def add_subscription(request):
                 customer_email=request.POST['customer_email'],
                 customer_phone=request.POST['customer_phone'],
                 end_date=end_date,
-                company=request.user.company,
+                company=get_active_company(request)[0],
             )
             async_task(send_subscription_confirmation_email, subscription.id)
             return redirect('subscriptions')

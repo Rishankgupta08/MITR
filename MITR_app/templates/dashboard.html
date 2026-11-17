@@ -574,14 +574,30 @@
         </div>
     </div>
     </div>
-    <div class="search-bar">
-      <form method="GET" action="{% url 'dashboard' %}">
-        {% csrf_token %}
-        <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
-        <button type="submit">
-          <i class="fas fa-search"></i> 
-        </button>
+    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+      <div class="search-bar" style="margin-bottom: 0;">
+        <form method="GET" action="{% url 'dashboard' %}">
+          {% if is_admin and selected_company %}
+          <input type="hidden" name="company" value="{{ selected_company }}">
+          {% endif %}
+          <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
+          <button type="submit">
+            <i class="fas fa-search"></i> 
+          </button>
+        </form>
+      </div>
+      {% if is_admin %}
+      <form method="GET" action="{% url 'dashboard' %}" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+        <label for="admin-company-select" style="font-weight: 600; color: #333;">Company:</label>
+        <select id="admin-company-select" name="company" onchange="this.form.submit()" style="padding: 9px 14px; border: 1px solid #ccc; border-radius: 20px; background: #fff; font-weight: 500; cursor: pointer;">
+          {% for comp in available_companies %}
+          <option value="{{ comp }}" {% if comp == selected_company %}selected{% endif %}>{{ comp }}</option>
+          {% endfor %}
+        </select>
       </form>
+      {% else %}
+      <span style="padding: 6px 14px; background: #333; color: #fff; border-radius: 20px; font-size: 13px; font-weight: 500;">Company: {{ user.company }}</span>
+      {% endif %}
     </div>
     <div class="container">
       <table>
@@ -671,6 +687,7 @@
     </div>
   </div>
 
+  {% if is_admin or is_coordinator %}
   <div id="popup" class="popup">
     <div class="popup-content">
       <a href="{% url 'dashboard' %}" class="close-btn" onclick="hidePopup()" aria-label="Back to dashboard"><i class="fas fa-arrow-left"></i></a>
@@ -740,6 +757,9 @@
     </div>
   </div>
 
+  {% endif %}
+
+  {% if is_admin %}
   <div id="addEmployeePopup" class="popup">
     <div class="popup-content">
         <button class="close-btn" onclick="closeAddEmployeePopup()"><i class="fas fa-arrow-left"></i></button>
@@ -761,6 +781,7 @@
         <div id="employeeError" class="error"></div>
     </div>
 </div>
+  {% endif %}
 
   <!-- Add notification container -->
   <div id="notification" class="notification">

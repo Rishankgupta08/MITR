@@ -339,9 +339,19 @@
                     <br>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <!-- First Form -->
-                        <form method="get" onsubmit="return validateDateField()" style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <form method="get" onsubmit="return validateDateField()" style="margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            {% if user.is_superuser %}
+                            <label for="report_company">Company:</label>
+                            <select id="report_company" name="company" onchange="this.form.submit()">
+                                {% for comp in available_companies %}
+                                <option value="{{ comp }}" {% if comp == selected_company %}selected{% endif %}>{{ comp }}</option>
+                                {% endfor %}
+                            </select>
+                            {% else %}
+                            <span style="padding: 6px 14px; background: #333; color: #fff; border-radius: 20px; font-size: 13px; font-weight: 500;">Company: {{ selected_company }}</span>
+                            {% endif %}
                             <label required for="date">Select Date:</label>
-                            <input type="date" id="date" name="date" value="{{ selected_date|date:'y-m-d' }}" required>
+                            <input type="date" id="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" required>
                             <select id="report_type" name="report_type">
                                 <option value="daily" {% if report_type == 'daily' %}selected{% endif %}>Daily</option>
                                 <option value="weekly" {% if report_type == 'weekly' %}selected{% endif %}>Weekly</option>
@@ -370,7 +380,7 @@
             </div>
             <br>
             <div class="card wide-card">
-                <h2 style="font-size: 20px;"><strong>Tasks Report for {{ selected_date }}</strong></h2>
+                <h2 style="font-size: 20px;"><strong>Tasks Report for {{ selected_date }} ({{ selected_company }})</strong></h2>
                 <br>
                 <table>
                     <thead>
@@ -399,7 +409,7 @@
                             <td>{{ task.email|slice:":8" }}...</td>
                             <td>{{ task.date_added }}</td>
                             <td>{{ task.submission_date }}</td>
-                            <td>{{ task.completed_date }}</td>
+                            <td>{{ task.completed_date|default:'—' }}</td>
                             <td>
                                 {% if task.completed %}
                                     {% if task.completed_date and task.completed_date.date > task.submission_date %}
