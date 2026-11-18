@@ -233,7 +233,7 @@
   <div class="header">
     <div class="header-left">
       <a href="{% url 'dashboard' %}" class="back-btn" aria-label="Back to dashboard">
-        <i class="fas fa-arrow-left"></i>
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
       </a>
       <h1 style="color: white;">Task Details</h1>
     </div>
@@ -261,7 +261,7 @@
       {% if is_admin %}
         <form method="post" action="{% url 'delete_task' task.id %}">
           {% csrf_token %}
-          <button type="submit" class="delete-task-btn"><i class="fas fa-trash-alt"></i></button>
+          <button type="submit" class="delete-task-btn" aria-label="Delete task"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>
         </form>
       {% endif %}
     </div>

@@ -1,66 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee List</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Google Sans', sans-serif;
-            background-color: #f9f9f9;
-        }
+{% extends 'base.html' %}
 
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            width: 200px;
-            height: 100%;
-            background-color: #333;
-            color: #fff;
-            padding: 20px;
-            box-sizing: border-box;
-            position: fixed;
-            left: 0;
-            top: 0;
-            transition: width 0.3s ease;
-        }
+{% block title %}Employee List{% endblock %}
 
-        .sidebar.collapsed {
-            width: 80px;
-        }
+{% block extra_css %}
+<style>
+        
 
-        .sidebar-btn {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            height: 70px;
-            padding: 10px;
-            border: none;
-            background: none;
-            color: #fff;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .sidebar-btn:hover {
-            background-color: #444;
-        }
-
-        .sidebar-btn i {
-            font-size: 20px;
-            width: 30px;
-        }
-
-        .sidebar.collapsed .sidebar-btn span {
-            display: none;
-        }
+        
 
         .main-content {
             margin-left: 200px;
@@ -349,33 +295,10 @@
       padding: 0;
     }
     </style>
-</head>
-<body>
-    <div class="sidebar">
-        <button class="sidebar-btn collapse-btn">
-            <i class="fas fa-angle-double-left"></i>
-            <span>Collapse</span>
-        </button>
-        <a href="{% url 'dashboard' %}" class="sidebar-btn sidebar-link">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
-        {% if employee.coordinator or user.is_superuser %}
-        <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
-          <i class="fas fa-chart-line"></i>
-          <span>Summary<br>Report</span>
-        </a>
-        {% endif %}
-        {% if employee.coordinator or user.is_superuser %}
-        <a href="{% url 'subscriptions' %}" class="sidebar-btn sidebar-link">
-            <i class="fas fa-ticket-alt"></i>
-            <span>Subscriptions</span>
-        </a>
-        {% endif %}
-        <div class="version-text">MITR v2.0.1</div>
-    </div>
+{% endblock %}
 
-    <div class="main-content">
+{% block content %}
+<div class="main-content">
         <div class="dashboard-header">
             <h1 style="font-size: 45px; margin-left: 20px;">Employee List</h1>
             <div style="margin-right: 20px;" class="user-info">
@@ -392,7 +315,7 @@
                 <div class="logout-option">
                 <form method="POST" action="{% url 'logout' %}">
                     {% csrf_token %}
-                    <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                    <button type="submit" class="logout-btn" aria-label="Log out"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
                 </form>
                 </div>
             </div>
@@ -404,9 +327,7 @@
                   <input type="hidden" name="company" value="{{ selected_company }}">
                   {% endif %}
                   <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
-                  <button type="submit">
-                    <i class="fas fa-search"></i> 
-                  </button>
+                  <button type="submit" aria-label="Search"><i class="fas fa-search" aria-hidden="true"></i></button>
                 </form>
             </div>
             {% if user.is_superuser %}
@@ -444,8 +365,8 @@
                 </div>
 
                 <!-- Delete button -->
-                <div class="delete-icon-container" data-id="{{ employee.id }}" data-name="{{ employee.name }}" onclick="openModal(this)">
-                    <i class="fas fa-trash-alt delete-icon"></i>
+                <div class="delete-icon-container" role="button" tabindex="0" aria-label="Remove {{ employee.name }}" data-id="{{ employee.id }}" data-name="{{ employee.name }}" onclick="openModal(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModal(this);}">
+                    <i class="fas fa-trash-alt delete-icon" aria-hidden="true"></i>
                 </div>
                 {% endif %}
 
@@ -455,9 +376,9 @@
             {% endfor %}
         </ul>
     </div>
-    <div id="confirmModal" class="modal" style="display: none;">
+    <div id="confirmModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" style="display: none;">
         <div class="modal-content">
-            <h2>Confirm Removal</h2>    
+            <h2 id="confirmModalTitle">Confirm Removal</h2>    
             <p id="modal-text">Are you sure you want to remove this employee?</p>
             <div class="btn-container">
                 <form method="POST" id="modal-form">
@@ -468,13 +389,11 @@
             </div>
         </div>
     </div>
-    <script>
-        // Add the sidebar collapse functionality
-        document.querySelector('.collapse-btn').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('collapsed');
-            document.querySelector('.main-content').classList.toggle('expanded');
-        });
+{% endblock %}
 
+{% block extra_js %}
+<script>
+        
         // Add employee search functionality
         const searchInput = document.querySelector('input[name="search"]');
         if (searchInput) {
@@ -560,6 +479,12 @@
                 });
             });
         });
-    </script>
-</body>
-</html>
+    
+        // Keyboard support: Escape key closes modal
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' || event.key === 'Esc') {
+                closeModal();
+            }
+        });
+</script>
+{% endblock %}

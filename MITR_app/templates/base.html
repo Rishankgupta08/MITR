@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Task Management System{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      width: 200px;
+      height: 100%;
+      background-color: #333;
+      color: #fff;
+      padding: 20px;
+      box-sizing: border-box;
+      position: fixed;
+      left: 0;
+      top: 0;
+      transition: width 0.3s ease;
+      z-index: 1000;
+    }
+
+    .sidebar-link {
+      text-decoration: none;  
+    }
+
+    .sidebar.collapsed {
+      width: 80px;
+    }
+
+    .sidebar-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      height: 70px;
+      background-color: transparent;
+      border: none;
+      color: #fff;
+      padding: 0 10px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .sidebar-btn:hover {
+      background-color: #444;
+    }
+
+    .sidebar-btn i {
+      margin-right: 10px;
+      font-size: 20px;
+      width: 30px;
+    }
+
+    .sidebar-btn span {
+      margin-left: auto;
+      text-align: right;
+      white-space: normal;
+    }
+
+    .sidebar.collapsed .sidebar-btn span {
+      display: none;
+    }
+
+    .version-text {
+      margin-top: auto;
+      display: none;
+      text-align: center;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    .sidebar:not(.collapsed) .version-text {
+      display: block;
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% include 'partials/sidebar.html' %}
+
+  {% block content %}{% endblock %}
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const sidebar = document.querySelector('.sidebar');
+      const collapseBtn = document.querySelector('.collapse-btn');
+      if (collapseBtn && sidebar) {
+        collapseBtn.addEventListener('click', function() {
+          sidebar.classList.toggle('collapsed');
+          const isCollapsed = sidebar.classList.contains('collapsed');
+          collapseBtn.setAttribute('aria-expanded', !isCollapsed);
+          const icon = collapseBtn.querySelector('i');
+          const span = collapseBtn.querySelector('span');
+          if (isCollapsed) {
+            if (icon) {
+              icon.classList.remove('fa-angle-double-left');
+              icon.classList.add('fa-angle-double-right');
+            }
+            if (span) {
+              span.textContent = 'Expand';
+            }
+          } else {
+            if (icon) {
+              icon.classList.remove('fa-angle-double-right');
+              icon.classList.add('fa-angle-double-left');
+            }
+            if (span) {
+              span.textContent = 'Collapse';
+            }
+          }
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.classList.toggle('expanded');
+          }
+          const dashboard = document.querySelector('.dashboard');
+          if (dashboard) {
+            dashboard.classList.toggle('collapsed');
+          }
+        });
+      }
+    });
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,93 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Management System</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+{% extends 'base.html' %}
 
+{% block title %}Task Management System{% endblock %}
 
-  <!------------------------------------------ STYLES --------------------------------------------->
+{% block extra_css %}
+<style>
+    
 
-
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Google Sans', sans-serif;
-    }
-
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      width: 200px;
-      height: 100%;
-      background-color: #333;
-      color: #fff;
-      padding: 20px;
-      box-sizing: border-box;
-      position: fixed;
-      left: 0;
-      top: 0;
-      transition: width 0.3s ease;
-    }
-
-    .sidebar-link {
-      text-decoration: none;  
-    }
-
-    .sidebar.collapsed {
-      width: 80px;
-    }
-
-    .sidebar-btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      height: 70px; /* Increased button height */
-      background-color: transparent;
-      border: none;
-      color: #fff;
-      padding: 0 10px; /* Increased padding */
-      font-size: 15px; /* Font size */
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      font-family: 'Google Sans', sans-serif;
-    }
-
-    .sidebar-btn:hover {
-      background-color: #444;
-    }
-
-    .sidebar-btn i {
-      margin-right: 10px;
-    }
-
-    .sidebar-btn span {
-      margin-left: auto;
-      text-align: right;
-      white-space: normal;
-    }
-
-    .sidebar.collapsed .sidebar-btn span {
-      display: none;
-    }
-
-    .version-text {
-      margin-top: auto;
-      display: none;
-      text-align: center;
-      font-size: 14px;
-      color: #fff;
-    }
-
-    .sidebar:not(.collapsed) .version-text {
-      display: block;
-    }
+    
 
     .dashboard {
       margin-left: 220px;
@@ -507,52 +426,10 @@
         transform: translateY(-20px);
     }
   </style>
+{% endblock %}
 
-
-  <!------------------------------------------- HTML ---------------------------------------------->
-
-
-</head>
-<body>
-  <div class="sidebar">
-    <button class="sidebar-btn collapse-btn">
-      <i class="fas fa-angle-double-left"></i>
-      <span>Collapse</span>
-    </button>
-    {% if is_admin or is_coordinator %}
-    <button class="sidebar-btn add-task-btn">
-      <i class="fas fa-plus"></i>
-      <span>Add Task</span>
-    </button>
-    {% endif %}
-    {% if is_admin or is_coordinator %}
-    <a href="{% url 'subscriptions' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-ticket-alt"></i>
-      <span>Subscriptions</span>
-    </a>
-    {% endif %}
-    {% if is_admin or is_coordinator %}
-    <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-users"></i>
-      <span>Employee Management</span>
-    </a>
-    {% endif %}
-    {% if is_admin or is_coordinator %}
-    <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-chart-line"></i>
-      <span>Summary<br>Report</span>
-    </a>
-    {% endif %}
-    {% if is_admin %}
-    <button class="sidebar-btn add-employee-btn">
-      <i class="fas fa-user-plus"></i>
-      <span>Add<br>Employee</span>
-    </button>
-    {% endif %}
-    <div class="version-text">MITR v2.0.1</div>
-  </div>
-
-  <div class="dashboard">
+{% block content %}
+<div class="dashboard">
     <div class="dashboard-header">
       <h1 style="font-size: 45px;">Dashboard</h1>
       <div class="user-info">
@@ -569,7 +446,7 @@
         <div class="logout-option">
         <form method="POST" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+            <button type="submit" class="logout-btn" aria-label="Log out"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
         </form>
         </div>
     </div>
@@ -581,9 +458,7 @@
           <input type="hidden" name="company" value="{{ selected_company }}">
           {% endif %}
           <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
-          <button type="submit">
-            <i class="fas fa-search"></i> 
-          </button>
+          <button type="submit" aria-label="Search"><i class="fas fa-search" aria-hidden="true"></i></button>
         </form>
       </div>
       {% if is_admin %}
@@ -685,13 +560,29 @@
         </tbody>
       </table>
     </div>
+
+    <div class="pagination flex justify-center mt-4 space-x-2">
+    {% if tasks.has_previous %}
+        <a href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">&laquo; First</a>
+        <a href="?page={{ tasks.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Previous</a>
+    {% endif %}
+
+    <span class="px-3 py-2 bg-gray-800 text-white rounded-lg">
+        Page {{ tasks.number }} of {{ tasks.paginator.num_pages }}
+    </span>
+
+    {% if tasks.has_next %}
+        <a href="?page={{ tasks.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Next</a>
+        <a href="?page={{ tasks.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Last &raquo;</a>
+    {% endif %}
+</div>
   </div>
 
   {% if is_admin or is_coordinator %}
-  <div id="popup" class="popup">
+  <div id="popup" class="popup" role="dialog" aria-modal="true" aria-labelledby="addTaskTitle">
     <div class="popup-content">
-      <a href="{% url 'dashboard' %}" class="close-btn" onclick="hidePopup()" aria-label="Back to dashboard"><i class="fas fa-arrow-left"></i></a>
-      <h2 style="font-size: 25px;">Add New Task</h2>
+      <a href="{% url 'dashboard' %}" class="close-btn" onclick="hidePopup()" aria-label="Close modal"><i class="fas fa-arrow-left" aria-hidden="true"></i></a>
+      <h2 id="addTaskTitle" style="font-size: 25px;">Add New Task</h2>
       <form method="post" id="taskForm" name="taskForm">
         {% csrf_token %}
         <div class="form-group">
@@ -760,10 +651,10 @@
   {% endif %}
 
   {% if is_admin %}
-  <div id="addEmployeePopup" class="popup">
+  <div id="addEmployeePopup" class="popup" role="dialog" aria-modal="true" aria-labelledby="addEmployeeTitle">
     <div class="popup-content">
-        <button class="close-btn" onclick="closeAddEmployeePopup()"><i class="fas fa-arrow-left"></i></button>
-        <h2 style="font-size: 25px;">Add New Employee</h2>
+        <button type="button" class="close-btn" onclick="closeAddEmployeePopup()" aria-label="Close modal"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
+        <h2 id="addEmployeeTitle" style="font-size: 25px;">Add New Employee</h2>
         <form method="post" id="addEmployeeForm" name="addEmployeeForm">
           {% csrf_token %}
           <div class="form-group">
@@ -795,9 +686,10 @@
   </div>
 
   <!------------------------------------------ SCRIPTS --------------------------------------------->
+{% endblock %}
 
-
-  <script>
+{% block extra_js %}
+<script>
     // Get elements by their class or id
     const sidebar = document.querySelector('.sidebar');
     const dashboard = document.querySelector('.dashboard');
@@ -820,23 +712,7 @@
         });
     }
 
-    // BUTTONS----------------------------------------------------------------------------------------
-    collapseBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        dashboard.classList.toggle('collapsed');
-
-        // Toggle the collapse icon and text based on sidebar state
-        if (sidebar.classList.contains('collapsed')) {
-            collapseIcon.classList.remove('fa-angle-double-left');
-            collapseIcon.classList.add('fa-angle-double-right');
-            collapseText.textContent = 'Expand';
-        } else {
-            collapseIcon.classList.remove('fa-angle-double-right');
-            collapseIcon.classList.add('fa-angle-double-left');
-            collapseText.textContent = 'Collapse';
-        }
-    });
-
+    
     // Ensure addTaskBtn exists before attaching event listener
     if (addTaskBtn) {
         // Event listener to show the popup when the add task button is clicked
@@ -957,23 +833,18 @@
             notification.classList.remove('show');
         }, duration);
     }
-  </script>
-
-
-</body>
-</html>
-<div class="pagination flex justify-center mt-4 space-x-2">
-    {% if tasks.has_previous %}
-        <a href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">&laquo; First</a>
-        <a href="?page={{ tasks.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Previous</a>
-    {% endif %}
-
-    <span class="px-3 py-2 bg-gray-800 text-white rounded-lg">
-        Page {{ tasks.number }} of {{ tasks.paginator.num_pages }}
-    </span>
-
-    {% if tasks.has_next %}
-        <a href="?page={{ tasks.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Next</a>
-        <a href="?page={{ tasks.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Last &raquo;</a>
-    {% endif %}
-</div>
+  
+    // Keyboard support: Escape key closes active popup
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' || event.key === 'Esc') {
+            if (popup && popup.style.display === 'block') {
+                popup.style.display = 'none';
+                reset_form();
+            }
+            if (addEmployeePopup && addEmployeePopup.style.display === 'block') {
+                closeAddEmployeePopup();
+            }
+        }
+    });
+</script>
+{% endblock %}
