@@ -1,70 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Subscriptions - Task Management System</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+{% extends 'base.html' %}
 
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Google Sans', sans-serif;
-    }
+{% block title %}Subscriptions - Task Management System{% endblock %}
 
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      width: 200px;
-      height: 100%;
-      background-color: #333;
-      color: #fff;
-      padding: 20px;
-      box-sizing: border-box;
-      position: fixed;
-      left: 0;
-      top: 0;
-      transition: width 0.3s ease;
-    }
+{% block extra_css %}
+<style>
+    
 
-    .sidebar-link {
-      text-decoration: none;  
-    }
-
-    .sidebar.collapsed {
-      width: 80px;
-    }
-
-    .sidebar-btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      height: 70px;
-      padding: 10px;
-      border: none;
-      background: none;
-      color: #fff;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    .sidebar-btn:hover {
-      background-color: #444;
-    }
-
-    .sidebar-btn i {
-      font-size: 20px;
-      width: 30px;
-    }
-
-    .sidebar.collapsed .sidebar-btn span {
-      display: none;
-    }
+    
 
     .main-content {
       margin-left: 200px;
@@ -267,33 +209,10 @@
       padding: 0;
     }
   </style>
-</head>
-<body>
-  <div class="sidebar">
-    <button class="sidebar-btn collapse-btn">
-      <i class="fas fa-angle-double-left"></i>
-      <span>Collapse</span>
-    </button>
-    <a href="{% url 'dashboard' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-home"></i>
-      <span>Home</span>
-    </a>
-    {% if employee.coordinator or user.is_superuser %}
-    <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-users"></i>
-      <span><p style="margin-left: 25px;">Employee</p> <p>Management</p></span>
-    </a>
-    {% endif %}
-    {% if employee.coordinator or user.is_superuser %}
-    <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-chart-line"></i>
-      <span>Summary<br>Report</span>
-    </a>
-    {% endif %}
-    <div class="version-text">MITR v2.0.1</div>
-  </div>
+{% endblock %}
 
-  <div class="main-content">
+{% block content %}
+<div class="main-content">
     <div class="dashboard-header">
       <h1 style="font-size: 45px; margin-left: 20px;">Subscriptions</h1>
       <div style="margin-right: 4px;" class="user-info">
@@ -307,7 +226,7 @@
         <div class="logout-option">
           <form method="POST" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+            <button type="submit" class="logout-btn" aria-label="Log out"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
           </form>
         </div>
       </div>
@@ -319,9 +238,7 @@
           <input type="hidden" name="company" value="{{ selected_company }}">
           {% endif %}
           <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
-          <button type="submit">
-            <i class="fas fa-search"></i> 
-          </button>
+          <button type="submit" aria-label="Search"><i class="fas fa-search" aria-hidden="true"></i></button>
         </form>
       </div>
       {% if user.is_superuser %}
@@ -421,13 +338,11 @@
   </div>
 
   <!-- Add Subscription Popup -->
-  <div id="addSubscriptionPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center" style="backdrop-filter: blur(5px); /* Add blur effect */">
+  <div id="addSubscriptionPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center" style="backdrop-filter: blur(5px);" role="dialog" aria-modal="true" aria-labelledby="addSubscriptionTitle">
       <div class="bg-white rounded-lg p-8 max-w-md w-full">
           <div class="flex justify-between items-center mb-6">
-              <h2 class="text-2xl font-bold">Add Subscription</h2>
-              <button onclick="closeAddSubscriptionPopup()" class="text-gray-500 hover:text-gray-700">
-                  <i class="fas fa-times"></i>
-              </button>
+              <h2 id="addSubscriptionTitle" class="text-2xl font-bold">Add Subscription</h2>
+              <button onclick="closeAddSubscriptionPopup()" class="text-gray-500 hover:text-gray-700" aria-label="Close modal" type="button"><i class="fas fa-times" aria-hidden="true"></i></button>
           </div>
           
           <form id="subscriptionForm" method="POST" action="{% url 'add_subscription' %}">
@@ -481,21 +396,11 @@
           </form>
       </div>
   </div>
+{% endblock %}
 
-  <script>
-    // Sidebar collapse functionality
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-    const collapseBtn = document.querySelector('.collapse-btn');
-    const collapseBtnIcon = collapseBtn.querySelector('i');
-
-    collapseBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
-      mainContent.classList.toggle('expanded');
-      collapseBtnIcon.classList.toggle('fa-angle-double-left');
-      collapseBtnIcon.classList.toggle('fa-angle-double-right');
-    });
-
+{% block extra_js %}
+<script>
+    
     function openAddSubscriptionPopup() {
         document.getElementById('addSubscriptionPopup').classList.remove('hidden');
         document.getElementById('addSubscriptionPopup').classList.add('flex');
@@ -514,6 +419,12 @@
     function openAddEmployeePopup() {
       window.location.href = "{% url 'add_employee' %}";
     }
-  </script>
-</body>
-</html>
+  
+    // Keyboard support: Escape key closes active popup
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' || event.key === 'Esc') {
+            closeAddSubscriptionPopup();
+        }
+    });
+</script>
+{% endblock %}

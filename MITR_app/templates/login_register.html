@@ -193,9 +193,7 @@
     <form method="POST" class="login-form{% if active_form == 'login' %} active{% endif %}" id="login-form" action="{% url 'login_register' %}" style="{% if active_form == 'login' %}display: block; right: 0;{% else %}display: none;{% endif %}">
       {% csrf_token %}
       <div class="header-container">
-        <button type="button" class="back-button" onclick="hideLogin()">
-          <i class="fas fa-arrow-left"></i>
-        </button>
+        <button type="button" class="back-button" onclick="hideLogin()" aria-label="Back to selection"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
         <h2>Login</h2>
       </div>
 
@@ -214,9 +212,7 @@
     <form method="POST" class="register-form{% if active_form == 'register' %} active{% endif %}" id="register-form" action="{% url 'login_register' %}" style="{% if active_form == 'register' %}display: block; right: 0;{% else %}display: none;{% endif %}">
       {% csrf_token %}
       <div class="header-container">
-        <button type="button" class="back-button" onclick="hideRegister()">
-          <i class="fas fa-arrow-left"></i>
-        </button>
+        <button type="button" class="back-button" onclick="hideRegister()" aria-label="Back to selection"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
         <h2>Register</h2>
       </div>
 

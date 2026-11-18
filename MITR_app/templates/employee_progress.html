@@ -253,8 +253,8 @@
 </head>
 <body>
     <div class="header">
-        <a href="{% url 'employee_list' %}" class="back-btn">
-            <i class="fas fa-arrow-left"></i>
+        <a href="{% url 'employee_list' %}" class="back-btn" aria-label="Back to employee list">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>
         </a>
         <h1>{{ employee.name }}'s Progress</h1>
         <div style="width: 40px;"></div>
