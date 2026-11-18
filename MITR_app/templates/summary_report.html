@@ -289,29 +289,7 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <button class="sidebar-btn collapse-btn">
-            <i class="fas fa-angle-double-left"></i>
-            <span>Collapse</span>
-        </button>
-        <a href="{% url 'dashboard' %}" class="sidebar-btn sidebar-link">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
-        {% if employee.coordinator or user.is_superuser %}
-        <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link">
-            <i class="fas fa-users"></i>
-            <span><p style="margin-left: 25px;">Employee</p> <p>Management</p></span>
-        </a>
-        {% endif %}
-        {% if employee.coordinator or user.is_superuser %}
-        <a href="{% url 'subscriptions' %}" class="sidebar-btn sidebar-link">
-            <i class="fas fa-ticket-alt"></i>
-            <span>Subscriptions</span>
-        </a>
-        {% endif %}
-        <div class="version-text">MITR v2.0.1</div>
-    </div>
+    {% include 'partials/sidebar.html' with active_page='summary_report' %}
 
     <div class="main-content">
         <div class="dashboard-header">
@@ -327,7 +305,7 @@
                 <div style="margin-top: 20px;" class="logout-option">
                     <form method="POST" action="{% url 'logout' %}">
                         {% csrf_token %}
-                        <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                        <button type="submit" class="logout-btn" aria-label="Logout"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
                     </form>
                 </div>
             </div>

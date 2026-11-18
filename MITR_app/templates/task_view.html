@@ -261,7 +261,7 @@
       {% if is_admin %}
         <form method="post" action="{% url 'delete_task' task.id %}">
           {% csrf_token %}
-          <button type="submit" class="delete-task-btn"><i class="fas fa-trash-alt"></i></button>
+          <button type="submit" class="delete-task-btn" aria-label="Delete task"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>
         </form>
       {% endif %}
     </div>

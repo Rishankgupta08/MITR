@@ -514,43 +514,7 @@
 
 </head>
 <body>
-  <div class="sidebar">
-    <button class="sidebar-btn collapse-btn">
-      <i class="fas fa-angle-double-left"></i>
-      <span>Collapse</span>
-    </button>
-    {% if is_admin or is_coordinator %}
-    <button class="sidebar-btn add-task-btn">
-      <i class="fas fa-plus"></i>
-      <span>Add Task</span>
-    </button>
-    {% endif %}
-    {% if is_admin or is_coordinator %}
-    <a href="{% url 'subscriptions' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-ticket-alt"></i>
-      <span>Subscriptions</span>
-    </a>
-    {% endif %}
-    {% if is_admin or is_coordinator %}
-    <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-users"></i>
-      <span>Employee Management</span>
-    </a>
-    {% endif %}
-    {% if is_admin or is_coordinator %}
-    <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-chart-line"></i>
-      <span>Summary<br>Report</span>
-    </a>
-    {% endif %}
-    {% if is_admin %}
-    <button class="sidebar-btn add-employee-btn">
-      <i class="fas fa-user-plus"></i>
-      <span>Add<br>Employee</span>
-    </button>
-    {% endif %}
-    <div class="version-text">MITR v2.0.1</div>
-  </div>
+  {% include 'partials/sidebar.html' with active_page='dashboard' %}
 
   <div class="dashboard">
     <div class="dashboard-header">
@@ -569,7 +533,7 @@
         <div class="logout-option">
         <form method="POST" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+            <button type="submit" class="logout-btn" aria-label="Logout"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
         </form>
         </div>
     </div>
@@ -578,8 +542,8 @@
       <form method="GET" action="{% url 'dashboard' %}">
         {% csrf_token %}
         <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
-        <button type="submit">
-          <i class="fas fa-search"></i> 
+        <button type="submit" aria-label="Search">
+          <i class="fas fa-search" aria-hidden="true"></i> 
         </button>
       </form>
     </div>
@@ -671,10 +635,10 @@
     </div>
   </div>
 
-  <div id="popup" class="popup">
+  <div id="popup" class="popup" role="dialog" aria-modal="true" aria-labelledby="addTaskHeading">
     <div class="popup-content">
-      <a href="{% url 'dashboard' %}" class="close-btn" onclick="hidePopup()" aria-label="Back to dashboard"><i class="fas fa-arrow-left"></i></a>
-      <h2 style="font-size: 25px;">Add New Task</h2>
+      <a href="{% url 'dashboard' %}" class="close-btn" onclick="hidePopup()" aria-label="Close add task modal"><i class="fas fa-arrow-left" aria-hidden="true"></i></a>
+      <h2 id="addTaskHeading" style="font-size: 25px;">Add New Task</h2>
       <form method="post" id="taskForm" name="taskForm">
         {% csrf_token %}
         <div class="form-group">
@@ -740,10 +704,10 @@
     </div>
   </div>
 
-  <div id="addEmployeePopup" class="popup">
+  <div id="addEmployeePopup" class="popup" role="dialog" aria-modal="true" aria-labelledby="addEmployeeHeading">
     <div class="popup-content">
-        <button class="close-btn" onclick="closeAddEmployeePopup()"><i class="fas fa-arrow-left"></i></button>
-        <h2 style="font-size: 25px;">Add New Employee</h2>
+        <button class="close-btn" type="button" onclick="closeAddEmployeePopup()" aria-label="Close add employee modal"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
+        <h2 id="addEmployeeHeading" style="font-size: 25px;">Add New Employee</h2>
         <form method="post" id="addEmployeeForm" name="addEmployeeForm">
           {% csrf_token %}
           <div class="form-group">
@@ -902,7 +866,14 @@
         window.location.href = "{% url 'logout' %}";
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const popup = document.getElementById('popup');
+            const addEmployeePopup = document.getElementById('addEmployeePopup');
+            if (popup) popup.style.display = 'none';
+            if (addEmployeePopup) addEmployeePopup.style.display = 'none';
+        }
+    });
         // Check if we have a new task or employee flag in URL
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('task_added')) {

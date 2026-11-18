@@ -351,29 +351,7 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <button class="sidebar-btn collapse-btn">
-            <i class="fas fa-angle-double-left"></i>
-            <span>Collapse</span>
-        </button>
-        <a href="{% url 'dashboard' %}" class="sidebar-btn sidebar-link">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </a>
-        {% if employee.coordinator or user.is_superuser %}
-        <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
-          <i class="fas fa-chart-line"></i>
-          <span>Summary<br>Report</span>
-        </a>
-        {% endif %}
-        {% if employee.coordinator or user.is_superuser %}
-        <a href="{% url 'subscriptions' %}" class="sidebar-btn sidebar-link">
-            <i class="fas fa-ticket-alt"></i>
-            <span>Subscriptions</span>
-        </a>
-        {% endif %}
-        <div class="version-text">MITR v2.0.1</div>
-    </div>
+    {% include 'partials/sidebar.html' with active_page='employee_list' %}
 
     <div class="main-content">
         <div class="dashboard-header">
@@ -392,7 +370,7 @@
                 <div class="logout-option">
                 <form method="POST" action="{% url 'logout' %}">
                     {% csrf_token %}
-                    <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                    <button type="submit" class="logout-btn" aria-label="Logout"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
                 </form>
                 </div>
             </div>
@@ -401,8 +379,8 @@
             <form method="GET" action="{% url 'dashboard' %}">
               {% csrf_token %}
               <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
-              <button type="submit">
-                <i class="fas fa-search"></i> 
+              <button type="submit" aria-label="Search">
+                <i class="fas fa-search" aria-hidden="true"></i> 
               </button>
             </form>
         </div>
@@ -439,9 +417,9 @@
             {% endfor %}
         </ul>
     </div>
-    <div id="confirmModal" class="modal" style="display: none;">
+    <div id="confirmModal" class="modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="confirmModalHeading">
         <div class="modal-content">
-            <h2>Confirm Removal</h2>    
+            <h2 id="confirmModalHeading">Confirm Removal</h2>    
             <p id="modal-text">Are you sure you want to remove this employee?</p>
             <div class="btn-container">
                 <form method="POST" id="modal-form">
@@ -499,6 +477,12 @@
                 modal.style.display = "none";
             }
         }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
 
         // Coordinator toggle functionality
         document.querySelectorAll('.switch input[type="checkbox"]').forEach((switchElement) => {

@@ -1,0 +1,47 @@
+<div class="sidebar">
+  <button class="sidebar-btn collapse-btn" aria-label="Collapse sidebar">
+    <i class="fas fa-angle-double-left" aria-hidden="true"></i>
+    <span>Collapse</span>
+  </button>
+
+  {% if active_page != 'dashboard' %}
+  <a href="{% url 'dashboard' %}" class="sidebar-btn sidebar-link" aria-label="Home Dashboard">
+    <i class="fas fa-home" aria-hidden="true"></i>
+    <span>Home</span>
+  </a>
+  {% endif %}
+
+  {% if is_admin or is_coordinator or employee.coordinator or user.is_superuser %}
+    {% if active_page == 'dashboard' %}
+    <button class="sidebar-btn add-task-btn" aria-label="Add new task">
+      <i class="fas fa-plus" aria-hidden="true"></i>
+      <span>Add Task</span>
+    </button>
+    {% endif %}
+
+    <a href="{% url 'subscriptions' %}" class="sidebar-btn sidebar-link" aria-label="Subscriptions">
+      <i class="fas fa-ticket-alt" aria-hidden="true"></i>
+      <span>Subscriptions</span>
+    </a>
+
+    <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link" aria-label="Employee Management">
+      <i class="fas fa-users" aria-hidden="true"></i>
+      <span>Employee Management</span>
+    </a>
+
+    <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link" aria-label="Summary Report">
+      <i class="fas fa-chart-line" aria-hidden="true"></i>
+      <span>Summary<br>Report</span>
+    </a>
+
+    {% if is_admin and active_page == 'dashboard' %}
+    <button class="sidebar-btn add-employee-btn" aria-label="Add new employee">
+      <i class="fas fa-user-plus" aria-hidden="true"></i>
+      <span>Add<br>Employee</span>
+    </button>
+    {% endif %}
+  {% endif %}
+
+  <div class="version-text">MITR v2.0.1</div>
+</div>
+

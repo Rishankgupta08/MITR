@@ -269,29 +269,7 @@
   </style>
 </head>
 <body>
-  <div class="sidebar">
-    <button class="sidebar-btn collapse-btn">
-      <i class="fas fa-angle-double-left"></i>
-      <span>Collapse</span>
-    </button>
-    <a href="{% url 'dashboard' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-home"></i>
-      <span>Home</span>
-    </a>
-    {% if employee.coordinator or user.is_superuser %}
-    <a href="{% url 'employee_list' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-users"></i>
-      <span><p style="margin-left: 25px;">Employee</p> <p>Management</p></span>
-    </a>
-    {% endif %}
-    {% if employee.coordinator or user.is_superuser %}
-    <a href="{% url 'summary_report' %}" class="sidebar-btn sidebar-link">
-      <i class="fas fa-chart-line"></i>
-      <span>Summary<br>Report</span>
-    </a>
-    {% endif %}
-    <div class="version-text">MITR v2.0.1</div>
-  </div>
+  {% include 'partials/sidebar.html' with active_page='subscriptions' %}
 
   <div class="main-content">
     <div class="dashboard-header">
@@ -307,7 +285,7 @@
         <div class="logout-option">
           <form method="POST" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+            <button type="submit" class="logout-btn" aria-label="Logout"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
           </form>
         </div>
       </div>
@@ -316,8 +294,8 @@
       <form method="GET" action="{% url 'dashboard' %}">
         {% csrf_token %}
         <input type="text" name="search" placeholder="Search..." value="{{ search_query }}">
-        <button type="submit">
-          <i class="fas fa-search"></i> 
+        <button type="submit" aria-label="Search">
+          <i class="fas fa-search" aria-hidden="true"></i> 
         </button>
       </form>
     </div>
@@ -405,12 +383,12 @@
   </div>
 
   <!-- Add Subscription Popup -->
-  <div id="addSubscriptionPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center" style="backdrop-filter: blur(5px); /* Add blur effect */">
+  <div id="addSubscriptionPopup" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center" style="backdrop-filter: blur(5px); /* Add blur effect */" role="dialog" aria-modal="true" aria-labelledby="addSubscriptionHeading">
       <div class="bg-white rounded-lg p-8 max-w-md w-full">
           <div class="flex justify-between items-center mb-6">
-              <h2 class="text-2xl font-bold">Add Subscription</h2>
-              <button onclick="closeAddSubscriptionPopup()" class="text-gray-500 hover:text-gray-700">
-                  <i class="fas fa-times"></i>
+              <h2 id="addSubscriptionHeading" class="text-2xl font-bold">Add Subscription</h2>
+              <button onclick="closeAddSubscriptionPopup()" class="text-gray-500 hover:text-gray-700" aria-label="Close add subscription modal">
+                  <i class="fas fa-times" aria-hidden="true"></i>
               </button>
           </div>
           
@@ -490,6 +468,12 @@
         document.getElementById('addSubscriptionPopup').classList.remove('flex');
         document.getElementById('subscriptionForm').reset();
     }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeAddSubscriptionPopup();
+        }
+    });
 
     function logout() {
       window.location.href = "{% url 'logout' %}";
